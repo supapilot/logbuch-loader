@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		59990B532FE13A3A00C40A09 /* Logbuch Loader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Logbuch Loader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		DE00000000000000000000A3 /* Logbuch LoaderTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Logbuch LoaderTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +17,22 @@
 			path = "Logbuch Loader";
 			sourceTree = "<group>";
 		};
+		DE00000000000000000000A1 /* Logbuch LoaderTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Logbuch LoaderTests";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		59990B502FE13A3A00C40A09 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DE00000000000000000000A5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +46,7 @@
 			isa = PBXGroup;
 			children = (
 				59990B552FE13A3A00C40A09 /* Logbuch Loader */,
+				DE00000000000000000000A1 /* Logbuch LoaderTests */,
 				59990B542FE13A3A00C40A09 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +55,7 @@
 			isa = PBXGroup;
 			children = (
 				59990B532FE13A3A00C40A09 /* Logbuch Loader.app */,
+				DE00000000000000000000A3 /* Logbuch LoaderTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,7 +85,40 @@
 			productReference = 59990B532FE13A3A00C40A09 /* Logbuch Loader.app */;
 			productType = "com.apple.product-type.application";
 		};
+		DE00000000000000000000A2 /* Logbuch LoaderTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE00000000000000000000A9 /* Build configuration list for PBXNativeTarget "Logbuch LoaderTests" */;
+			buildPhases = (
+				DE00000000000000000000A4 /* Sources */,
+				DE00000000000000000000A5 /* Frameworks */,
+				DE00000000000000000000A6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DE00000000000000000000A7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DE00000000000000000000A1 /* Logbuch LoaderTests */,
+			);
+			name = "Logbuch LoaderTests";
+			packageProductDependencies = (
+			);
+			productName = "Logbuch LoaderTests";
+			productReference = DE00000000000000000000A3 /* Logbuch LoaderTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		DE00000000000000000000A8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 59990B4B2FE13A3A00C40A09 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 59990B522FE13A3A00C40A09;
+			remoteInfo = "Logbuch Loader";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		59990B4B2FE13A3A00C40A09 /* Project object */ = {
@@ -82,6 +130,10 @@
 				TargetAttributes = {
 					59990B522FE13A3A00C40A09 = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					DE00000000000000000000A2 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 59990B522FE13A3A00C40A09;
 					};
 				};
 			};
@@ -100,12 +152,20 @@
 			projectRoot = "";
 			targets = (
 				59990B522FE13A3A00C40A09 /* Logbuch Loader */,
+				DE00000000000000000000A2 /* Logbuch LoaderTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		59990B512FE13A3A00C40A09 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DE00000000000000000000A6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +182,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DE00000000000000000000A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DE00000000000000000000A7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 59990B522FE13A3A00C40A09 /* Logbuch Loader */;
+			targetProxy = DE00000000000000000000A8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		59990B5C2FE13A3B00C40A09 /* Debug */ = {
@@ -331,6 +406,44 @@
 			};
 			name = Release;
 		};
+		DE00000000000000000000AA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "supapilot.Logbuch-LoaderTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Logbuch Loader.app/Contents/MacOS/Logbuch Loader";
+			};
+			name = Debug;
+		};
+		DE00000000000000000000AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "supapilot.Logbuch-LoaderTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Logbuch Loader.app/Contents/MacOS/Logbuch Loader";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -348,6 +461,15 @@
 			buildConfigurations = (
 				59990B5F2FE13A3B00C40A09 /* Debug */,
 				59990B602FE13A3B00C40A09 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DE00000000000000000000A9 /* Build configuration list for PBXNativeTarget "Logbuch LoaderTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DE00000000000000000000AA /* Debug */,
+				DE00000000000000000000AB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
