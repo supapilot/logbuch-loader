@@ -529,6 +529,12 @@ struct ComposerView: View {
     @State private var resultMessage: String?
     @State private var resultIsError = false
 
+    /// Gewählte Lotsenbrüderschaft (Revier) – bestimmt das Logo im
+    /// Ausbildungsbuch. Auswahl wird über App-Neustarts hinweg gemerkt.
+    @AppStorage("composerBrotherhoodID") private var brotherhoodID: String = ""
+    /// Läuft gerade ein Erstellungsvorgang (inkl. Logo-Download)?
+    @State private var isBuilding = false
+
     private let columns = [
         GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
@@ -544,6 +550,24 @@ struct ComposerView: View {
                 ProfileStatusBox(user: user,
                                  onLogout: { model.logout() },
                                  logoutDisabled: model.isDownloading)
+            }
+
+            GroupBox {
+                Picker("Lotsenbrüderschaft", selection: $brotherhoodID) {
+                    Text("Bitte wählen …").tag("")
+                    ForEach(Brotherhood.all) { revier in
+                        Text(revier.name).tag(revier.id)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                HStack(spacing: 6) {
+                    Text("Lotsenbrüderschaft")
+                    InfoButton(text: "Bitte die eigene Lotsenbrüderschaft auswählen. Dies wird für das Erstellen des Ausbildungsbuchs benötigt.")
+                        .font(.body)
+                }
             }
 
             GroupBox {
@@ -564,12 +588,16 @@ struct ComposerView: View {
                 Button {
                     createLogbook()
                 } label: {
-                    Label("Ausbildungsbuch erstellen", systemImage: "book.closed")
-                        .font(.body)
+                    HStack(spacing: 6) {
+                        if isBuilding { ProgressView().controlSize(.small) }
+                        Label(isBuilding ? "Ausbildungsbuch wird erstellt …" : "Ausbildungsbuch erstellen",
+                              systemImage: "book.closed")
+                            .font(.body)
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(!hasFiles)
+                .disabled(!hasFiles || brotherhoodID.isEmpty || isBuilding)
 
                 if let resultMessage {
                     Text(resultMessage)
@@ -590,34 +618,58 @@ struct ComposerView: View {
     /// Kapitel-Deckblätter, Inhalte – alles A4) und fragt per Speichern-Dialog
     /// nach dem Zielort (Vorgabe: Ausbildungsbuch.pdf).
     private func createLogbook() {
-        guard hasFiles else { return }
+        guard hasFiles, !isBuilding else { return }
         guard let user else {
             resultIsError = true
             resultMessage = "Nicht angemeldet."
             return
         }
-
-        guard let data = LogbookComposer.build(fieldFiles: model.composerFiles, user: user) else {
+        guard let revier = Brotherhood.named(brotherhoodID) else {
             resultIsError = true
-            resultMessage = "Das Ausbildungsbuch konnte nicht erstellt werden."
+            resultMessage = "Bitte eine Lotsenbrüderschaft auswählen."
             return
         }
 
-        let panel = NSSavePanel()
-        panel.title = "Ausbildungsbuch speichern"
-        panel.nameFieldStringValue = LogbookComposer.suggestedFileName(fieldFiles: model.composerFiles, user: user)
-        panel.allowedContentTypes = [.pdf]
-        panel.isExtensionHidden = false
+        isBuilding = true
+        resultMessage = nil
+        Task {
+            defer { isBuilding = false }
 
-        guard panel.runModal() == .OK, let target = panel.url else { return }
+            // Logo der gewählten Lotsenbrüderschaft von der BLK-Website laden
+            // (bewusst nicht in der App gespeichert).
+            let logo: NSImage
+            do {
+                let (data, _) = try await URLSession.shared.data(from: revier.logoURL)
+                guard let image = NSImage(data: data) else { throw URLError(.cannotDecodeContentData) }
+                logo = image
+            } catch {
+                resultIsError = true
+                resultMessage = "Logo der Lotsenbrüderschaft konnte nicht geladen werden. Bitte Internetverbindung prüfen."
+                return
+            }
 
-        do {
-            try data.write(to: target)
-            resultIsError = false
-            resultMessage = "Ausbildungsbuch gespeichert: \(target.lastPathComponent)"
-        } catch {
-            resultIsError = true
-            resultMessage = "Speichern fehlgeschlagen: \(error.localizedDescription)"
+            guard let data = LogbookComposer.build(fieldFiles: model.composerFiles, user: user, logo: logo) else {
+                resultIsError = true
+                resultMessage = "Das Ausbildungsbuch konnte nicht erstellt werden."
+                return
+            }
+
+            let panel = NSSavePanel()
+            panel.title = "Ausbildungsbuch speichern"
+            panel.nameFieldStringValue = LogbookComposer.suggestedFileName(fieldFiles: model.composerFiles, user: user)
+            panel.allowedContentTypes = [.pdf]
+            panel.isExtensionHidden = false
+
+            guard panel.runModal() == .OK, let target = panel.url else { return }
+
+            do {
+                try data.write(to: target)
+                resultIsError = false
+                resultMessage = "Ausbildungsbuch gespeichert: \(target.lastPathComponent)"
+            } catch {
+                resultIsError = true
+                resultMessage = "Speichern fehlgeschlagen: \(error.localizedDescription)"
+            }
         }
     }
 }

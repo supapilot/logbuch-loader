@@ -43,7 +43,9 @@ enum LogbookComposer {
 
     /// Erzeugt das gesamte Ausbildungsbuch als PDF-Daten.
     /// `fieldFiles` in Feld-Reihenfolge (Ausbildungsplan … Zertifikate).
-    static func build(fieldFiles: [[URL]], user: LogbuchUser) -> Data? {
+    /// `logo` ist das zur Laufzeit geladene Logo der Lotsenbrüderschaft
+    /// (nil = ohne Logo).
+    static func build(fieldFiles: [[URL]], user: LogbuchUser, logo: NSImage? = nil) -> Data? {
         let titles = ["Ausbildungsverlauf", "Ausbildungsstand", "Ausbildungsfahrten",
                       "Simulatorausbildung", "Theoretische Ausbildung", "Zertifikate"]
         let romans = ["I", "II", "III", "IV", "V", "VI"]
@@ -91,11 +93,11 @@ enum LogbookComposer {
         // Deckblätter zählen mit (nur ohne sichtbare Nummer); die Seitenzahl wird
         // nur auf den hinzugefügten Inhaltsseiten angezeigt.
         var pageNumber = 0
-        drawCoverPage(ctx, info: info)
-        drawTOCPage(ctx, chapters: chapters, info: info)
+        drawCoverPage(ctx, info: info, logo: logo)
+        drawTOCPage(ctx, chapters: chapters, info: info, logo: logo)
         for (index, chapter) in chapters.enumerated() {
             pageNumber += 1   // Kapiteldeckblatt zählt mit (unsichtbar)
-            drawChapterDivider(ctx, index: index, chapter: chapter, info: info)
+            drawChapterDivider(ctx, index: index, chapter: chapter, info: info, logo: logo)
             for url in chapter.files { appendContent(url, ctx: ctx, pageNumber: &pageNumber) }
         }
 
@@ -275,9 +277,10 @@ enum LogbookComposer {
 
     // MARK: - Seiten zeichnen
 
-    private static func drawCoverPage(_ ctx: CGContext, info: CoverInfo) {
+    private static func drawCoverPage(_ ctx: CGContext, info: CoverInfo, logo: NSImage?) {
         ctx.beginPDFPage(nil)
         withAppKit(ctx) {
+            drawLogo(logo, top: 120, maxWidth: 360, maxHeight: 150)
             drawCentered("AUSBILDUNGSBUCH", font: .systemFont(ofSize: 30, weight: .semibold),
                          color: accentBlue, y: 300, kern: 1.5)
             rule(centerWidth: 160, y: 348, color: accentRed)
@@ -296,9 +299,10 @@ enum LogbookComposer {
         ctx.endPDFPage()
     }
 
-    private static func drawTOCPage(_ ctx: CGContext, chapters: [Chapter], info: CoverInfo) {
+    private static func drawTOCPage(_ ctx: CGContext, chapters: [Chapter], info: CoverInfo, logo: NSImage?) {
         ctx.beginPDFPage(nil)
         withAppKit(ctx) {
+            drawLogo(logo, top: 40, maxWidth: 220, maxHeight: 90)
             drawCentered("Inhaltsverzeichnis", font: .systemFont(ofSize: 24, weight: .semibold),
                          color: accentBlue, y: 250)
             rule(centerWidth: 180, y: 292, color: accentRed)
@@ -323,9 +327,10 @@ enum LogbookComposer {
     }
 
     private static func drawChapterDivider(_ ctx: CGContext, index: Int,
-                                           chapter: Chapter, info: CoverInfo) {
+                                           chapter: Chapter, info: CoverInfo, logo: NSImage?) {
         ctx.beginPDFPage(nil)
         withAppKit(ctx) {
+            drawLogo(logo, top: 40, maxWidth: 220, maxHeight: 90)
 
             let romanFont = NSFont.systemFont(ofSize: 26, weight: .bold)
             let titleFont = NSFont.systemFont(ofSize: 26, weight: .semibold)
@@ -363,6 +368,19 @@ enum LogbookComposer {
         body()
         NSGraphicsContext.restoreGraphicsState()
         ctx.restoreGState()
+    }
+
+    /// Zeichnet das (zur Laufzeit geladene) Logo horizontal zentriert am oberen
+    /// Rand, skaliert unter Wahrung des Seitenverhältnisses so, dass es in die
+    /// Box `maxWidth × maxHeight` passt (nötig, weil die Revier-Logos sehr
+    /// unterschiedliche Seitenverhältnisse haben – breit bis quadratisch).
+    private static func drawLogo(_ image: NSImage?, top y: CGFloat,
+                                 maxWidth: CGFloat, maxHeight: CGFloat) {
+        guard let image, image.size.width > 0, image.size.height > 0 else { return }
+        let scale = min(maxWidth / image.size.width, maxHeight / image.size.height)
+        let w = image.size.width * scale
+        let h = image.size.height * scale
+        image.draw(in: CGRect(x: (W - w) / 2, y: y, width: w, height: h))
     }
 
     private static func drawCentered(_ text: String, font: NSFont,
