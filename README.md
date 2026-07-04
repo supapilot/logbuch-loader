@@ -42,12 +42,15 @@ Rechtsklick → „Öffnen" ist nicht nötig. Voraussetzung: macOS 14 oder neuer
 
 ## Bauen
 
+Aus dem Quellcode – ohne Apple-Entwicklerkonto, mit lokaler Ad-hoc-Signatur:
+
 ```bash
-xcodebuild -project "Logbuch Loader.xcodeproj" \
-  -scheme "Logbuch Loader" -configuration Release build
+xcodebuild -project "Logbuch Loader.xcodeproj" -scheme "Logbuch Loader" \
+  -configuration Release CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual build
 ```
 
-Oder das Projekt in Xcode öffnen und über **Product → Run** starten.
+Oder das Projekt in Xcode öffnen und über **Product → Run** starten – dort bei
+Bedarf unter *Signing & Capabilities* das eigene Team auswählen.
 
 ## Datenschutz & Sandbox
 
