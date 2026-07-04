@@ -485,6 +485,8 @@ struct ContentView: View {
             } else {
                 LoginView(model: model)
             }
+
+            AppFooter()
         }
         .fixedSize(horizontal: false, vertical: true)
         .frame(minWidth: 500)
@@ -908,6 +910,34 @@ struct AppHeader: View {
             Text("Logbuch Loader")
                 .font(.title2.bold())
         }
+    }
+}
+
+/// Dezente Fußzeile: Version, Open-Source-Lizenz, Entwickler und Link zum
+/// Quellcode.
+struct AppFooter: View {
+    private var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Divider()
+                .padding(.bottom, 4)
+            HStack(spacing: 5) {
+                Text("Logbuch Loader \(version)")
+                Text("·")
+                Text("Open Source (Apache-2.0)")
+                Text("·")
+                Text("© 2026 Supapilot")
+                Text("·")
+                Link("Quellcode", destination: URL(string: "https://github.com/supapilot/logbuch-loader")!)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 2)
     }
 }
 
