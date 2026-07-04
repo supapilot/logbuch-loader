@@ -1,12 +1,17 @@
-# Logbuch Loader
+<p align="center">
+  <img src="assets/logo.png" alt="Logbuch Loader" width="160">
+</p>
+
+<h1 align="center">Logbuch Loader</h1>
 
 Eine native macOS-App (SwiftUI), die das Herunterladen und Zusammenstellen der
-Ausbildungsunterlagen aus dem Lotsen-Logbuch-Portal vereinfacht. Sie meldet sich
-mit den vom Nutzer eingegebenen Zugangsdaten an, lädt die einzelnen Fahrten-PDFs
-und kann daraus ein vollständiges **Ausbildungsbuch** als PDF erzeugen.
+Ausbildungsunterlagen aus dem [BLK Logbuch](https://logbuch.lotsen.de/)
+vereinfacht. Sie meldet sich mit den vom Nutzer eingegebenen Zugangsdaten an,
+lädt die einzelnen Fahrten-PDFs und kann daraus ein vollständiges
+**Ausbildungsbuch** als PDF erzeugen.
 
 > **Hinweis:** Dies ist ein inoffizielles, privates Hilfswerkzeug und steht in
-> keiner Verbindung zum Betreiber des Logbuch-Portals. Es nutzt lediglich die
+> keiner Verbindung zum Betreiber des BLK Logbuchs. Es nutzt lediglich die
 > reguläre Anmeldung des Nutzers, um dessen **eigene** Unterlagen abzurufen.
 > Nutzung auf eigene Verantwortung.
 
@@ -44,7 +49,7 @@ Die App läuft in der macOS App Sandbox mit einem minimalen Satz an Rechten:
   der PDFs im selbst gewählten Zielordner.
 
 Zugangsdaten werden ausschließlich lokal im Schlüsselbund gespeichert und nur an
-das Logbuch-Portal des Nutzers gesendet. Es werden keine Daten an Dritte
+das BLK Logbuch des Nutzers gesendet. Es werden keine Daten an Dritte
 übertragen.
 
 ## Lizenz
