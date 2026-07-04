@@ -17,6 +17,13 @@ einem vollständigen Ausbildungsbuch als PDF zusammen.
 > reguläre Anmeldung des Nutzers, um dessen **eigene** Unterlagen abzurufen.
 > Nutzung auf eigene Verantwortung.
 
+## Download
+
+Die fertige, von Apple **notarisierte** App gibt es als DMG unter
+[**Releases**](https://github.com/supapilot/logbuch-loader/releases/latest):
+herunterladen, öffnen und in den Ordner **Programme** ziehen – ein
+Rechtsklick → „Öffnen" ist nicht nötig. Voraussetzung: macOS 14 oder neuer.
+
 ## Funktionen
 
 - **Anmeldung** mit Speicherung der Zugangsdaten im macOS-Schlüsselbund (Keychain).
