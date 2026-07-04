@@ -50,14 +50,23 @@ struct Logbuch_LoaderApp: App {
             .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: center,
         ]
+        func link(_ text: String, _ url: String) -> NSAttributedString {
+            NSAttributedString(string: text, attributes: [
+                .font: NSFont.systemFont(ofSize: 11),
+                .paragraphStyle: center,
+                .link: URL(string: url)!,
+            ])
+        }
+        let newline = NSAttributedString(string: "\n", attributes: base)
+
         let credits = NSMutableAttributedString(
             string: "Open Source unter der Apache-Lizenz 2.0.\nEntwickelt von Supapilot.\n\n",
             attributes: base)
-        credits.append(NSAttributedString(string: "Quellcode auf GitHub", attributes: [
-            .font: NSFont.systemFont(ofSize: 11),
-            .paragraphStyle: center,
-            .link: URL(string: "https://github.com/supapilot/logbuch-loader")!,
-        ]))
+        credits.append(link("Quellcode auf GitHub", "https://github.com/supapilot/logbuch-loader"))
+        credits.append(newline)
+        credits.append(link("www.supapilot.dev", "https://www.supapilot.dev"))
+        credits.append(newline)
+        credits.append(link("hello@supapilot.dev", "mailto:hello@supapilot.dev"))
 
         NSApplication.shared.activate(ignoringOtherApps: true)
         NSApplication.shared.orderFrontStandardAboutPanel(options: [.credits: credits])

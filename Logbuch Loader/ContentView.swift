@@ -927,11 +927,9 @@ struct AppFooter: View {
             HStack(spacing: 5) {
                 Text("Logbuch Loader \(version)")
                 Text("·")
-                Text("Open Source (Apache-2.0)")
+                Link("Open Source", destination: URL(string: "https://github.com/supapilot/logbuch-loader")!)
                 Text("·")
                 Text("© 2026 Supapilot")
-                Text("·")
-                Link("Quellcode", destination: URL(string: "https://github.com/supapilot/logbuch-loader")!)
             }
         }
         .font(.caption)
