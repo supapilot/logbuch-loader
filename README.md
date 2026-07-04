@@ -4,11 +4,13 @@
 
 <h1 align="center">Logbuch Loader</h1>
 
-Eine native macOS-App (SwiftUI), die das Herunterladen und Zusammenstellen der
-Ausbildungsunterlagen aus dem [BLK Logbuch](https://logbuch.lotsen.de/)
-vereinfacht. Sie meldet sich mit den vom Nutzer eingegebenen Zugangsdaten an,
-lädt die einzelnen Fahrten-PDFs und kann daraus ein vollständiges
-**Ausbildungsbuch** als PDF erzeugen.
+Eine native macOS-App (SwiftUI) für **deutsche Seelotsenanwärter** in der
+Seelotsenausbildung. Sie vereinfacht das Herunterladen und Zusammenstellen der
+Ausbildungsunterlagen aus dem [BLK Logbuch](https://logbuch.lotsen.de/) und
+unterstützt die Anwärter beim Anfertigen des nach § 7 Abs. 1 SeeLAufV
+geforderten **Ausbildungsbuchs**. Sie meldet sich mit den vom Nutzer
+eingegebenen Zugangsdaten an, lädt die einzelnen Fahrten-PDFs und fügt sie zu
+einem vollständigen Ausbildungsbuch als PDF zusammen.
 
 > **Hinweis:** Dies ist ein inoffizielles, privates Hilfswerkzeug und steht in
 > keiner Verbindung zum Betreiber des BLK Logbuchs. Es nutzt lediglich die
