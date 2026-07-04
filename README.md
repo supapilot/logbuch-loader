@@ -35,6 +35,16 @@ Rechtsklick → „Öffnen" ist nicht nötig. Voraussetzung: macOS 14 oder neuer
   gegliederten Ausbildungsbuch (Deckblatt, Inhaltsverzeichnis mit Sprungzielen,
   Kapitel) im A4-Format zusammen.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshot-downloader.png" alt="Downloader – Fahrten laden und einzeln herunterladen" width="720">
+  <br><br>
+  <img src="assets/screenshot-composer.png" alt="Composer – Ausbildungsbuch zusammenstellen" width="720">
+</p>
+
+> Die Screenshots zeigen anonymisierte Beispieldaten.
+
 ## Systemvoraussetzungen
 
 - macOS 14.0 oder neuer
