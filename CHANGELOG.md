@@ -7,6 +7,8 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.1.0] – 2026-07-04
+
 ### Geändert
 - Auswahl der Lotsenbrüderschaft ist optional: Ohne Auswahl wird das
   Ausbildungsbuch ohne Logo erstellt. Kann ein gewähltes Logo nicht geladen
@@ -28,5 +30,6 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.0.0...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/supapilot/logbuch-loader/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/supapilot/logbuch-loader/releases/tag/v1.0.0
