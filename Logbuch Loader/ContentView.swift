@@ -572,7 +572,7 @@ struct ComposerView: View {
             } label: {
                 HStack(spacing: 6) {
                     Text("Lotsenbrüderschaft")
-                    InfoButton(text: "Bitte die eigene Lotsenbrüderschaft auswählen. Dies wird für das Erstellen des Ausbildungsbuchs benötigt.")
+                    InfoButton(text: "Optional: Wähle deine Lotsenbrüderschaft, dann erscheint ihr Logo im Ausbildungsbuch. Ohne Auswahl wird es ohne Logo erstellt.")
                         .font(.body)
                 }
             }
@@ -604,7 +604,7 @@ struct ComposerView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(!hasFiles || brotherhoodID.isEmpty || isBuilding)
+                .disabled(!hasFiles || isBuilding)
 
                 if let resultMessage {
                     Text(resultMessage)
@@ -631,11 +631,9 @@ struct ComposerView: View {
             resultMessage = "Nicht angemeldet."
             return
         }
-        guard let revier = Brotherhood.named(brotherhoodID) else {
-            resultIsError = true
-            resultMessage = "Bitte eine Lotsenbrüderschaft auswählen."
-            return
-        }
+        // Eine Lotsenbrüderschaft ist optional. Ist keine gewählt, wird das
+        // Ausbildungsbuch ohne Logo erstellt (ohne Platzhalter).
+        let revier = Brotherhood.named(brotherhoodID)
 
         isBuilding = true
         resultMessage = nil
@@ -643,16 +641,18 @@ struct ComposerView: View {
             defer { isBuilding = false }
 
             // Logo der gewählten Lotsenbrüderschaft von der BLK-Website laden
-            // (bewusst nicht in der App gespeichert).
-            let logo: NSImage
-            do {
-                let (data, _) = try await URLSession.shared.data(from: revier.logoURL)
-                guard let image = NSImage(data: data) else { throw URLError(.cannotDecodeContentData) }
-                logo = image
-            } catch {
-                resultIsError = true
-                resultMessage = "Logo der Lotsenbrüderschaft konnte nicht geladen werden. Bitte Internetverbindung prüfen."
-                return
+            // (bewusst nicht in der App gespeichert). Schlägt das Laden fehl,
+            // wird das Buch trotzdem – dann eben ohne Logo – erstellt.
+            var logo: NSImage?
+            var logoNote = ""
+            if let revier {
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: revier.logoURL)
+                    guard let image = NSImage(data: data) else { throw URLError(.cannotDecodeContentData) }
+                    logo = image
+                } catch {
+                    logoNote = " (ohne Logo – es konnte nicht geladen werden)"
+                }
             }
 
             guard let data = LogbookComposer.build(fieldFiles: model.composerFiles, user: user, logo: logo) else {
@@ -672,7 +672,7 @@ struct ComposerView: View {
             do {
                 try data.write(to: target)
                 resultIsError = false
-                resultMessage = "Ausbildungsbuch gespeichert: \(target.lastPathComponent)"
+                resultMessage = "Ausbildungsbuch gespeichert: \(target.lastPathComponent)\(logoNote)"
             } catch {
                 resultIsError = true
                 resultMessage = "Speichern fehlgeschlagen: \(error.localizedDescription)"

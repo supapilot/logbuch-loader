@@ -45,6 +45,7 @@ enum LogbookComposer {
     /// `fieldFiles` in Feld-Reihenfolge (Ausbildungsplan … Zertifikate).
     /// `logo` ist das zur Laufzeit geladene Logo der Lotsenbrüderschaft
     /// (nil = ohne Logo).
+    @MainActor
     static func build(fieldFiles: [[URL]], user: LogbuchUser, logo: NSImage? = nil) -> Data? {
         let titles = ["Ausbildungsverlauf", "Ausbildungsstand", "Ausbildungsfahrten",
                       "Simulatorausbildung", "Theoretische Ausbildung", "Zertifikate"]
