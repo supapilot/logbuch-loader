@@ -553,15 +553,20 @@ struct ComposerView: View {
             }
 
             GroupBox {
-                Picker("Lotsenbrüderschaft", selection: $brotherhoodID) {
-                    Text("Bitte wählen …").tag("")
-                    ForEach(Brotherhood.all) { revier in
-                        Text(revier.name).tag(revier.id)
+                HStack(spacing: 8) {
+                    Picker("Lotsenbrüderschaft", selection: $brotherhoodID) {
+                        Text("Bitte wählen …").tag("")
+                        ForEach(Brotherhood.all) { revier in
+                            Text(revier.name).tag(revier.id)
+                        }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    InfoButton(text: "Die Logos sind Eigentum der jeweiligen Lotsenbrüderschaften. Mit dem Erstellen des Ausbildungsbuchs wird bestätigt, vorab die Erlaubnis zur Nutzung des Logos eingeholt zu haben.")
+                        .font(.body)
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(maxWidth: .infinity, alignment: .leading)
             } label: {
                 HStack(spacing: 6) {
                     Text("Lotsenbrüderschaft")
