@@ -4,6 +4,13 @@
 
 <h1 align="center">Logbuch Loader</h1>
 
+<p align="center">
+  <a href="https://github.com/supapilot/logbuch-loader/actions/workflows/ci.yml"><img src="https://github.com/supapilot/logbuch-loader/actions/workflows/ci.yml/badge.svg" alt="CI-Status"></a>
+  <a href="https://github.com/supapilot/logbuch-loader/releases/latest"><img src="https://img.shields.io/github/v/release/supapilot/logbuch-loader?label=Release" alt="Neuestes Release"></a>
+  <img src="https://img.shields.io/badge/Plattform-macOS%2014%2B-blue" alt="Plattform: macOS 14+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/Lizenz-Apache%202.0-green" alt="Lizenz: Apache-2.0"></a>
+</p>
+
 Eine native macOS-App (SwiftUI) für **deutsche Seelotsenanwärter** in der
 Seelotsenausbildung. Sie vereinfacht das Herunterladen und Zusammenstellen der
 Ausbildungsunterlagen aus dem [BLK Logbuch](https://logbuch.lotsen.de/) und
