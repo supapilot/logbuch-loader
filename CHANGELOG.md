@@ -7,6 +7,15 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.1.1] – 2026-07-06
+
+### Behoben
+- App startete auf Intel-Macs mit älterem macOS nicht („…wird auf diesem Mac
+  nicht unterstützt"). Ursache war eine zu hohe Hardened-Runtime-Version aus dem
+  Build-SDK. Die Signatur ist jetzt fest auf macOS 14.0 als Mindest-Runtime
+  gesetzt, sodass die App auf allen Macs ab macOS 14.0 läuft (Intel und Apple
+  Silicon).
+
 ## [1.1.0] – 2026-07-04
 
 ### Geändert
@@ -30,6 +39,7 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.1.0...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/supapilot/logbuch-loader/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/supapilot/logbuch-loader/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/supapilot/logbuch-loader/releases/tag/v1.0.0
