@@ -15,13 +15,113 @@ import UniformTypeIdentifiers
 /// Sortierbare Spalte der Fahrten-Liste.
 enum DriveSortField { case number, id, ship, date }
 
-/// Ein vom Nutzer im Composer angelegtes Zusatzkapitel: frei vergebener Name
-/// und die zugehörigen Dateien (nur PDFs bzw. ein ZIP, aus dem PDFs entnommen
-/// werden). Erscheint im Ausbildungsbuch nach „Zertifikate".
-struct CustomChapter: Identifiable {
+/// Die festen Kapitel des Ausbildungsbuchs. Jedes trägt seinen UI-Feldtitel,
+/// den (teils abweichenden) Titel im fertigen Buch, den Infotext und – über
+/// `ChapterField.sortKind` – seine Sortierregel. Dadurch bleibt beim freien
+/// Anordnen der Felder die richtige Sortierung erhalten.
+enum StandardChapter: String, CaseIterable, Identifiable {
+    case ausbildungsplan, ausbildungsstand, ausbildungsfahrten
+    case simulatorfahrten, tagesprotokolle, zertifikate
+
+    var id: String { rawValue }
+
+    /// Titel im Composer-Feld.
+    var fieldTitle: String {
+        switch self {
+        case .ausbildungsplan:    return "Ausbildungsplan"
+        case .ausbildungsstand:   return "Ausbildungsstand"
+        case .ausbildungsfahrten: return "Ausbildungsfahrten"
+        case .simulatorfahrten:   return "Simulatorfahrten"
+        case .tagesprotokolle:    return "Tagesprotokolle"
+        case .zertifikate:        return "Zertifikate"
+        }
+    }
+
+    /// Kapiteltitel im fertigen Ausbildungsbuch (weicht teils vom Feldtitel ab).
+    var bookTitle: String {
+        switch self {
+        case .ausbildungsplan:    return "Ausbildungsverlauf"
+        case .ausbildungsstand:   return "Ausbildungsstand"
+        case .ausbildungsfahrten: return "Ausbildungsfahrten"
+        case .simulatorfahrten:   return "Simulatorausbildung"
+        case .tagesprotokolle:    return "Theoretische Ausbildung"
+        case .zertifikate:        return "Zertifikate"
+        }
+    }
+
+    var info: String {
+        switch self {
+        case .ausbildungsplan:    return "Füge hier den Ausbildungsplan ein."
+        case .ausbildungsstand:   return "Füge hier den Ausbildungsstand ein. Wird automatisch übernommen, wenn du im Downloader „Logbuch laden“ nutzt."
+        case .ausbildungsfahrten: return "Füge hier alle Ausbildungsfahrten hinzu. Werden automatisch übernommen, wenn du im Downloader „Logbuch laden“ nutzt."
+        case .simulatorfahrten:   return "Füge hier alle Simulatorfahrten hinzu."
+        case .tagesprotokolle:    return "Füge hier alle Tagesprotokolle hinzu."
+        case .zertifikate:        return "Füge hier alle Zertifikate hinzu."
+        }
+    }
+
+    /// Sortierregel für die enthaltenen Dateien im Ausbildungsbuch.
+    var sort: LogbookComposer.SortKind {
+        switch self {
+        case .ausbildungsfahrten: return .driveDate
+        case .simulatorfahrten:   return .simulator
+        case .zertifikate:        return .certificate
+        default:                  return .alphabetical
+        }
+    }
+}
+
+/// Ein Feld im Composer: entweder ein Standardkapitel oder ein vom Nutzer
+/// angelegtes Zusatzkapitel. Trägt seine Dateien selbst, damit sich die
+/// Reihenfolge der Felder frei anordnen lässt und die Reihenfolge direkt die
+/// Kapitelreihenfolge im Ausbildungsbuch bestimmt.
+struct ChapterField: Identifiable {
     let id = UUID()
-    var name: String
+    var kind: Kind
     var urls: [URL] = []
+
+    enum Kind {
+        case standard(StandardChapter)
+        case custom(name: String)
+    }
+
+    /// Das Standardkapitel dieses Feldes – nil bei benutzerdefinierten Kapiteln.
+    var standardChapter: StandardChapter? {
+        if case .standard(let s) = kind { return s }
+        return nil
+    }
+
+    var isCustom: Bool { standardChapter == nil }
+
+    /// Titel im Composer-Feld.
+    var title: String {
+        switch kind {
+        case .standard(let s):  return s.fieldTitle
+        case .custom(let name): return name
+        }
+    }
+
+    var info: String {
+        switch kind {
+        case .standard(let s):  return s.info
+        case .custom(let name): return "Füge hier die Dateien für das Kapitel „\(name)“ ein."
+        }
+    }
+
+    /// Kapiteltitel im fertigen Ausbildungsbuch.
+    var bookTitle: String {
+        switch kind {
+        case .standard(let s): return s.bookTitle
+        case .custom(let name):
+            let t = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? "Weiteres Kapitel" : t
+        }
+    }
+
+    /// Sortierregel für die enthaltenen Dateien im Buch.
+    var sortKind: LogbookComposer.SortKind {
+        standardChapter?.sort ?? .alphabetical
+    }
 }
 
 @Observable
@@ -47,12 +147,22 @@ final class LoginViewModel {
     private let concurrency = 5
     var targetFolderURL: URL?
 
-    /// Dateien der Composer-Felder (im Model, damit „Logbuch laden" sie direkt
-    /// befüllen kann). Reihenfolge wie die Felder: Ausbildungsplan … Zertifikate.
-    var composerFiles: [[URL]] = Array(repeating: [], count: 6)
+    /// Alle Composer-Felder in ihrer aktuellen (frei anordenbaren) Reihenfolge –
+    /// standardmäßig die sechs festen Kapitel, ergänzt um bis zu drei eigene.
+    /// Die Reihenfolge bestimmt direkt die Kapitelreihenfolge im Ausbildungsbuch.
+    /// Im Model, damit „Logbuch laden" die passenden Felder direkt befüllen kann.
+    var chapterFields: [ChapterField] = StandardChapter.allCases.map { ChapterField(kind: .standard($0)) }
 
-    /// Optionale, vom Nutzer angelegte Zusatzkapitel (max. 3).
-    var customChapters: [CustomChapter] = []
+    /// Setzt die Dateien eines Standardkapitels (für „Logbuch laden").
+    func setFiles(_ urls: [URL], for chapter: StandardChapter) {
+        guard let i = chapterFields.firstIndex(where: { $0.standardChapter == chapter }) else { return }
+        chapterFields[i].urls = urls
+    }
+
+    /// Dateien eines Standardkapitels (nil-sicher, leer wenn nicht vorhanden).
+    func files(for chapter: StandardChapter) -> [URL] {
+        chapterFields.first { $0.standardChapter == chapter }?.urls ?? []
+    }
 
     // Fahrten-Liste (Einzel-Download)
     var drives: [DriveDownload] = []            // vorbereitet, geladen von loadDrivesList
@@ -110,7 +220,7 @@ final class LoginViewModel {
 
     init() {
         // Beim App-Start keine übrig gebliebenen Import-Dateien aus einer
-        // früheren Sitzung (composerFiles ist per Vorgabe bereits leer).
+        // früheren Sitzung (die Composer-Felder sind per Vorgabe leer).
         try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory
             .appendingPathComponent("ComposerImport", isDirectory: true))
     }
@@ -446,7 +556,7 @@ final class LoginViewModel {
         if let stufePDF {
             let url = dir.appendingPathComponent("Ausbildungsstand.pdf")
             if (try? stufePDF.write(to: url)) != nil {
-                composerFiles[1] = [url]   // „Ausbildungsstand"
+                setFiles([url], for: .ausbildungsstand)
             }
         }
 
@@ -456,7 +566,7 @@ final class LoginViewModel {
             if (try? entry.data.write(to: url)) != nil { driveURLs.append(url) }
         }
         if !driveURLs.isEmpty {
-            composerFiles[2] = driveURLs   // „Ausbildungsfahrten"
+            setFiles(driveURLs, for: .ausbildungsfahrten)
         }
     }
 }
@@ -466,6 +576,15 @@ private struct ContentHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
+    }
+}
+
+/// Sammelt die Rahmen aller Composer-Felder (Feld-ID → Rechteck) für die
+/// Zielbestimmung beim Umsortieren per Drag.
+private struct CellFrameKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
     }
 }
 
@@ -536,32 +655,11 @@ struct ContentView: View {
 
 }
 
-/// Composer-Ansicht: Profil & Status (sofern angemeldet) plus sechs
-/// Drag-&-Drop-Felder in zwei Spalten.
+/// Composer-Ansicht: Profil & Status (sofern angemeldet) plus die frei
+/// anordenbaren Drag-&-Drop-Felder in drei Spalten.
 struct ComposerView: View {
     @Bindable var model: LoginViewModel
     let user: LogbuchUser?
-
-    /// Beschriftung der sechs Felder (in Rasterreihenfolge).
-    private let titles = [
-        "Ausbildungsplan",
-        "Ausbildungsstand",
-        "Ausbildungsfahrten",
-        "Simulatorfahrten",
-        "Tagesprotokolle",
-        "Zertifikate",
-    ]
-
-    /// Kurze Anweisung pro Feld (gleiche Reihenfolge wie `titles`). Einzahl bei
-    /// einer erwarteten Datei, „alle …" bei mehreren.
-    private let infoTexts = [
-        "Füge hier den Ausbildungsplan ein.",
-        "Füge hier den Ausbildungsstand ein. Wird automatisch übernommen, wenn du im Downloader „Logbuch laden“ nutzt.",
-        "Füge hier alle Ausbildungsfahrten hinzu. Werden automatisch übernommen, wenn du im Downloader „Logbuch laden“ nutzt.",
-        "Füge hier alle Simulatorfahrten hinzu.",
-        "Füge hier alle Tagesprotokolle hinzu.",
-        "Füge hier alle Zertifikate hinzu.",
-    ]
 
     /// Kurze Rückmeldung nach dem Erstellen (Erfolg oder Fehler).
     @State private var resultMessage: String?
@@ -581,18 +679,35 @@ struct ComposerView: View {
     /// Rasterzeile mit drei Feldern).
     private let maxCustomChapters = 3
 
+    // Zustand des Umsortierens per Ziehen (Press-and-drag).
+    /// Aktuell gezogenes Feld (nil = kein Verschieben aktiv).
+    @State private var draggingID: UUID?
+    /// Translation der Zieh-Geste (für die Position der schwebenden Ghost-Kopie).
+    @State private var dragTranslation: CGSize = .zero
+    /// Rasterplatz des gezogenen Feldes bei Zieh-Beginn (im „grid"-Raum) – liefert
+    /// Ausgangs-Mittelpunkt und Breite der schwebenden Ghost-Kopie.
+    @State private var dragSlot: CGRect = .zero
+    /// Rahmen jedes Feldes im gemeinsamen Koordinatenraum „grid" – stabil, da die
+    /// Rasterzellen nie verschoben werden (nur die schwebende Ghost-Kopie folgt
+    /// dem Cursor). Basis für die Zielbestimmung beim Live-Umsortieren.
+    @State private var cellFrames: [UUID: CGRect] = [:]
+
+    /// Name des gemeinsamen Koordinatenraums für Feld-Rahmen und Zieh-Geste.
+    private let gridSpace = "grid"
+    /// Einheitliche Feder-Animation fürs Umsortieren.
+    private static let reorderAnimation = Animation.spring(response: 0.3, dampingFraction: 0.85)
+
     private let columns = [
         GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
     ]
 
-    /// Ob in irgendeinem Feld (fest oder benutzerdefiniert) mindestens eine
-    /// Datei liegt.
-    private var hasFiles: Bool {
-        !model.composerFiles.allSatisfy(\.isEmpty)
-            || model.customChapters.contains { !$0.urls.isEmpty }
-    }
+    /// Anzahl der benutzerdefinierten Kapitel.
+    private var customCount: Int { model.chapterFields.filter(\.isCustom).count }
+
+    /// Ob in irgendeinem Feld mindestens eine Datei liegt.
+    private var hasFiles: Bool { model.chapterFields.contains { !$0.urls.isEmpty } }
 
     var body: some View {
         VStack(spacing: 18) {
@@ -628,23 +743,17 @@ struct ComposerView: View {
             GroupBox {
                 VStack(spacing: 14) {
                     LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(model.composerFiles.indices, id: \.self) { index in
-                            DropField(title: titles[index], info: infoTexts[index], urls: $model.composerFiles[index])
-                        }
-                        // Benutzerdefinierte Kapitel – verhalten sich wie die
-                        // festen Felder und laufen im selben Raster weiter.
-                        ForEach($model.customChapters) { $chapter in
-                            let chapterID = chapter.id
-                            DropField(title: chapter.name,
-                                      info: "Füge hier die Dateien für das Kapitel „\(chapter.name)“ ein.",
-                                      urls: $chapter.urls,
-                                      onRemove: { model.customChapters.removeAll { $0.id == chapterID } })
+                        ForEach($model.chapterFields) { $field in
+                            fieldCell($field)
                         }
                     }
+                    .overlay(alignment: .topLeading) { dragGhost }
+                    .coordinateSpace(name: gridSpace)
+                    .onPreferenceChange(CellFrameKey.self) { cellFrames = $0 }
 
                     // Mittiger „+"-Button zum Anlegen eines Zusatzkapitels;
                     // verschwindet, sobald das Maximum erreicht ist.
-                    if model.customChapters.count < maxCustomChapters {
+                    if customCount < maxCustomChapters {
                         Button {
                             chapterNameDraft = ""
                             showAddChapter = true
@@ -660,7 +769,7 @@ struct ComposerView: View {
             } label: {
                 HStack(spacing: 6) {
                     Text("Unterlagen")
-                    InfoButton(text: "Lege die jeweiligen Unterlagen in das passende Feld – als einzelne PDFs, gesammelt als ZIP oder als ganzen Ordner (dessen PDFs dann übernommen werden). Verwende die Originaldateien möglichst unbearbeitet und ohne sie umzubenennen, damit sie korrekt einsortiert werden. Über „+“ kannst du bis zu drei eigene Kapitel ergänzen; sie erscheinen im Ausbildungsbuch nach „Zertifikate“. Sobald alles eingefügt ist, erstellt der Button „Ausbildungsbuch erstellen“ das fertige Ausbildungsbuch automatisch.")
+                    InfoButton(text: "Lege die jeweiligen Unterlagen in das passende Feld – als einzelne PDFs, gesammelt als ZIP oder als ganzen Ordner (dessen PDFs dann übernommen werden). Verwende die Originaldateien möglichst unbearbeitet und ohne sie umzubenennen, damit sie korrekt einsortiert werden. Über „+“ kannst du bis zu drei eigene Kapitel ergänzen. Halte ein Feld gedrückt und ziehe es, um die Reihenfolge zu ändern – sie bestimmt die Kapitelreihenfolge im Ausbildungsbuch. Sobald alles eingefügt ist, erstellt der Button „Ausbildungsbuch erstellen“ das fertige Ausbildungsbuch automatisch.")
                         .font(.body)
                 }
             }
@@ -700,12 +809,99 @@ struct ComposerView: View {
         .padding(.top, 4)
     }
 
+    /// Ein Feld im Raster. Während es gezogen wird, bleibt an seiner Stelle ein
+    /// Platzhalter (die sichtbare Kopie schwebt als `dragGhost`), sodass die
+    /// übrigen Felder beim Live-Umsortieren sauber nachrücken.
+    @ViewBuilder
+    private func fieldCell(_ field: Binding<ChapterField>) -> some View {
+        let f = field.wrappedValue
+        let isDragging = draggingID == f.id
+        DropField(title: f.title,
+                  info: f.info,
+                  urls: field.urls,
+                  onRemove: f.isCustom ? { removeChapter(f.id) } : nil)
+            // Rasterplatz messen (die Zellen selbst werden nie verschoben, daher
+            // ist der Rahmen stabil und für die Zielbestimmung verlässlich).
+            .background(GeometryReader { geo in
+                Color.clear
+                    .preference(key: CellFrameKey.self, value: [f.id: geo.frame(in: .named(gridSpace))])
+            })
+            // Gezogenes Feld ausblenden, aber Platz halten; Landeplatz andeuten.
+            .opacity(isDragging ? 0 : 1)
+            .overlay {
+                if isDragging {
+                    RoundedRectangle(cornerRadius: DropField.cornerRadius, style: .continuous)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                        .foregroundStyle(Color.accentColor.opacity(0.5))
+                }
+            }
+            .gesture(reorderGesture(for: f.id))
+    }
+
+    /// Die schwebende Kopie des gezogenen Feldes – folgt dem Cursor.
+    @ViewBuilder
+    private var dragGhost: some View {
+        if let id = draggingID, let field = model.chapterFields.first(where: { $0.id == id }) {
+            DropField(title: field.title, info: field.info, urls: .constant(field.urls))
+                .frame(width: dragSlot.width)
+                .scaleEffect(1.05)
+                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+                .position(x: dragSlot.midX + dragTranslation.width,
+                          y: dragSlot.midY + dragTranslation.height)
+                .allowsHitTesting(false)
+                .transition(.identity)
+        }
+    }
+
+    /// Ziehen (nach ~8 px) nimmt das Feld auf; es folgt als schwebende Kopie dem
+    /// Cursor, während die Rasterfelder live umsortiert werden. Ein reiner Klick
+    /// (ohne Bewegung) öffnet weiterhin den Dateidialog.
+    private func reorderGesture(for id: UUID) -> some Gesture {
+        DragGesture(minimumDistance: 8, coordinateSpace: .named(gridSpace))
+            .onChanged { value in
+                if draggingID == nil {
+                    guard let slot = cellFrames[id] else { return }
+                    dragSlot = slot
+                    draggingID = id
+                }
+                guard draggingID == id else { return }
+                dragTranslation = value.translation
+                reorderLive(draggedID: id, at: value.location)
+            }
+            .onEnded { _ in
+                withAnimation(Self.reorderAnimation) {
+                    draggingID = nil
+                    dragTranslation = .zero
+                }
+            }
+    }
+
+    /// Verschiebt das gezogene Feld live an die Position des Feldes, dessen
+    /// Rasterplatz der Cursor gerade überfährt – die übrigen rücken animiert nach.
+    /// Es wird an die Originalposition des überfahrenen Feldes einsortiert, sodass
+    /// das Verschieben in beide Richtungen sofort beim direkten Nachbarn greift.
+    private func reorderLive(draggedID: UUID, at point: CGPoint) {
+        guard let targetID = cellFrames.first(where: { $0.key != draggedID && $0.value.contains(point) })?.key,
+              let from = model.chapterFields.firstIndex(where: { $0.id == draggedID }),
+              let target = model.chapterFields.firstIndex(where: { $0.id == targetID }),
+              from != target else { return }
+        withAnimation(Self.reorderAnimation) {
+            let item = model.chapterFields.remove(at: from)
+            model.chapterFields.insert(item, at: target)
+        }
+    }
+
+    /// Entfernt ein benutzerdefiniertes Kapitel.
+    private func removeChapter(_ id: UUID) {
+        withAnimation { model.chapterFields.removeAll { $0.id == id } }
+    }
+
     /// Legt aus dem eingegebenen Namen ein neues Zusatzkapitel an (bis zum
     /// Maximum). Leere Namen werden ignoriert.
     private func addChapter() {
         let name = chapterNameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, model.customChapters.count < maxCustomChapters else { return }
-        model.customChapters.append(CustomChapter(name: name))
+        guard !name.isEmpty, customCount < maxCustomChapters else { return }
+        model.chapterFields.append(ChapterField(kind: .custom(name: name)))
         chapterNameDraft = ""
     }
 
@@ -743,15 +939,14 @@ struct ComposerView: View {
                 }
             }
 
-            // Nur nicht-leere Zusatzkapitel übergeben (leere werden – wie leere
-            // Standardfelder – nicht ins Ausbildungsbuch aufgenommen).
-            let customChapters = model.customChapters
-                .map { (name: $0.name, files: $0.urls) }
-                .filter { !$0.files.isEmpty }
+            // Kapitel in aktueller Feld-Reihenfolge übergeben; jedes trägt seinen
+            // Buchtitel und seine Sortierregel selbst. Leere Kapitel filtert der
+            // Composer heraus.
+            let chapters = model.chapterFields.map {
+                LogbookComposer.ChapterInput(title: $0.bookTitle, files: $0.urls, sort: $0.sortKind)
+            }
 
-            guard let data = LogbookComposer.build(fieldFiles: model.composerFiles,
-                                                   customChapters: customChapters,
-                                                   user: user, logo: logo) else {
+            guard let data = LogbookComposer.build(chapters: chapters, user: user, logo: logo) else {
                 resultIsError = true
                 resultMessage = "Das Ausbildungsbuch konnte nicht erstellt werden."
                 return
@@ -759,7 +954,8 @@ struct ComposerView: View {
 
             let panel = NSSavePanel()
             panel.title = "Ausbildungsbuch speichern"
-            panel.nameFieldStringValue = LogbookComposer.suggestedFileName(fieldFiles: model.composerFiles, user: user)
+            panel.nameFieldStringValue = LogbookComposer.suggestedFileName(
+                planFirstFile: model.files(for: .ausbildungsplan).first, user: user)
             panel.allowedContentTypes = [.pdf]
             panel.isExtensionHidden = false
 
@@ -818,6 +1014,9 @@ struct AddChapterSheet: View {
 /// Ordner werden dabei nach passenden Dateien durchsucht – und zeigt sie als
 /// gestapeltes Dokument-Icon mit Anzahl; „X" entfernt alle wieder.
 struct DropField: View {
+    /// Eckenradius der Ablagefläche – auch vom Zieh-Platzhalter im Raster genutzt.
+    static let cornerRadius: CGFloat = 10
+
     let title: String
     let info: String
     @Binding var urls: [URL]
@@ -858,11 +1057,11 @@ struct DropField: View {
             .frame(height: 100)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                     .strokeBorder(
                         highlight ? Color.accentColor : Color.secondary.opacity(0.4),
                         style: StrokeStyle(lineWidth: highlight ? 2 : 1.5, dash: [6, 4])

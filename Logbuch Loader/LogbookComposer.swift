@@ -41,19 +41,29 @@ enum LogbookComposer {
         let files: [URL]
     }
 
-    /// Erzeugt das gesamte Ausbildungsbuch als PDF-Daten.
-    /// `fieldFiles` in Feld-Reihenfolge (Ausbildungsplan … Zertifikate).
-    /// `customChapters` sind optionale Zusatzkapitel (Name + Dateien), die – in
-    /// der übergebenen Reihenfolge – hinter „Zertifikate" erscheinen.
-    /// `logo` ist das zur Laufzeit geladene Logo der Lotsenbrüderschaft
-    /// (nil = ohne Logo).
-    @MainActor
-    static func build(fieldFiles: [[URL]],
-                      customChapters: [(name: String, files: [URL])] = [],
-                      user: LogbuchUser, logo: NSImage? = nil) -> Data? {
-        let titles = ["Ausbildungsverlauf", "Ausbildungsstand", "Ausbildungsfahrten",
-                      "Simulatorausbildung", "Theoretische Ausbildung", "Zertifikate"]
+    /// Sortierregel für die Dateien eines Kapitels.
+    enum SortKind {
+        case driveDate      // Ausbildungsfahrten: Datum im Dateinamen
+        case simulator      // Simulatorfahrten: Zeitstempel auf der ersten Seite
+        case certificate    // Zertifikate: Datum im Dateinamen
+        case alphabetical   // alle übrigen: natürlicher Dateiname-Vergleich
+    }
 
+    /// Ein Kapitel als Eingabe für `build`: Titel, Dateien und Sortierregel – in
+    /// der Reihenfolge, in der die Kapitel im Buch erscheinen sollen.
+    struct ChapterInput {
+        let title: String
+        let files: [URL]
+        let sort: SortKind
+    }
+
+    /// Erzeugt das gesamte Ausbildungsbuch als PDF-Daten.
+    /// `chapters` in gewünschter Kapitelreihenfolge; leere Kapitel (auch nach
+    /// dem Auflösen von ZIPs) werden übersprungen. `logo` ist das zur Laufzeit
+    /// geladene Logo der Lotsenbrüderschaft (nil = ohne Logo).
+    @MainActor
+    static func build(chapters input: [ChapterInput],
+                      user: LogbuchUser, logo: NSImage? = nil) -> Data? {
         // Temporäres Arbeitsverzeichnis für aus ZIPs entpackte PDFs.
         let workDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("LogbuchLoader-\(UUID().uuidString)", isDirectory: true)
@@ -61,38 +71,20 @@ enum LogbookComposer {
         defer { try? FileManager.default.removeItem(at: workDir) }
 
         // Nur Kapitel mit mindestens einer Datei. ZIP-Dateien werden vorab in
-        // ihre enthaltenen PDFs aufgelöst; leere Kapitel entfallen.
-        let ausbildungsfahrtenIndex = 2   // „Ausbildungsfahrten"
-        let simulatorFieldIndex = 3       // „Simulatorfahrten"
-        let zertifikateIndex = 5          // „Zertifikate"
-
-        // Feste Kapitel in Feld-Reihenfolge, jeweils passend sortiert.
-        // Chronologisch (ältestes zuerst), wo eine Datumslogik greift:
-        // Ausbildungsfahrten nach dem Datum im Dateinamen, Simulatorfahrten nach
-        // dem Zeitstempel der ersten Seite; alle übrigen alphabetisch.
+        // ihre enthaltenen PDFs aufgelöst; jedes Kapitel wird nach seiner Regel
+        // sortiert (chronologisch, wo eine Datumslogik greift, sonst alphabetisch).
         var sections: [(title: String, files: [URL])] = []
-        for i in 0..<6 {
-            let raw = i < fieldFiles.count ? fieldFiles[i] : []
-            let pdfs = expandArchives(raw, into: workDir)
+        for ch in input {
+            let pdfs = expandArchives(ch.files, into: workDir)
             guard !pdfs.isEmpty else { continue }
             let files: [URL]
-            switch i {
-            case ausbildungsfahrtenIndex: files = sortedFiles(pdfs, date: driveFileDate)
-            case simulatorFieldIndex:     files = sortedFiles(pdfs, date: simulatorDate)
-            case zertifikateIndex:        files = sortedFiles(pdfs, date: certificateFileDate)
-            default:                      files = sortedFiles(pdfs, date: { _ in nil })
+            switch ch.sort {
+            case .driveDate:    files = sortedFiles(pdfs, date: driveFileDate)
+            case .simulator:    files = sortedFiles(pdfs, date: simulatorDate)
+            case .certificate:  files = sortedFiles(pdfs, date: certificateFileDate)
+            case .alphabetical: files = sortedFiles(pdfs, date: { _ in nil })
             }
-            sections.append((titles[i], files))
-        }
-
-        // Benutzerdefinierte Zusatzkapitel – hinter „Zertifikate", in der vom
-        // Nutzer angelegten Reihenfolge; Dateien alphabetisch (natürlich).
-        for chapter in customChapters {
-            let pdfs = expandArchives(chapter.files, into: workDir)
-            guard !pdfs.isEmpty else { continue }
-            let name = chapter.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            sections.append((name.isEmpty ? "Weiteres Kapitel" : name,
-                             sortedFiles(pdfs, date: { _ in nil })))
+            sections.append((ch.title, files))
         }
 
         guard !sections.isEmpty else { return nil }
@@ -128,10 +120,10 @@ enum LogbookComposer {
 
     /// Schlägt einen Dateinamen vor: „LA3G05 - Ausbildungsbuch Mustermann, Max.pdf".
     /// Stufe und Name stammen aus dem Profil; die Gruppe „Gxx" aus dem Dateinamen
-    /// des Ausbildungsplans (entfällt, wenn dort nicht enthalten).
-    static func suggestedFileName(fieldFiles: [[URL]], user: LogbuchUser) -> String {
+    /// des Ausbildungsplans (`planFirstFile`; entfällt, wenn nicht enthalten).
+    static func suggestedFileName(planFirstFile: URL?, user: LogbuchUser) -> String {
         let info = CoverInfo(user: user)
-        let prefix = info.laCode + (ausbildungsplanGroup(fieldFiles) ?? "")
+        let prefix = info.laCode + (ausbildungsplanGroup(planFirstFile) ?? "")
         let name = LogbuchService.sanitizeFileName(info.name)
         let base = prefix.isEmpty ? "Ausbildungsbuch \(name)" : "\(prefix) - Ausbildungsbuch \(name)"
         return base + ".pdf"
@@ -141,8 +133,8 @@ enum LogbookComposer {
     private static let planGroupRegexStd = try! NSRegularExpression(pattern: #"(?:^|[^A-Za-z0-9])(G\d{1,3})(?:[^0-9]|$)"#)
 
     /// Gruppencode „Gxx" aus dem Dateinamen der ersten Ausbildungsplan-Datei.
-    private static func ausbildungsplanGroup(_ fieldFiles: [[URL]]) -> String? {
-        guard let first = fieldFiles.first?.first else { return nil }
+    private static func ausbildungsplanGroup(_ planFirstFile: URL?) -> String? {
+        guard let first = planFirstFile else { return nil }
         let name = first.lastPathComponent
         let ns = name as NSString
         let full = NSRange(location: 0, length: ns.length)

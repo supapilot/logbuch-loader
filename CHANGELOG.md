@@ -7,6 +7,14 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.0] – 2026-07-08
+
+### Hinzugefügt
+- **Kapitel frei anordnen:** Halte ein Drag-&-Drop-Feld gedrückt und ziehe es an
+  eine andere Position – die Felder ordnen sich wie App-Symbole neu an. Die
+  Reihenfolge der Felder bestimmt direkt die Kapitelreihenfolge im
+  Ausbildungsbuch. Alle Felder (Standard- wie eigene Kapitel) sind verschiebbar.
+
 ## [1.2.1] – 2026-07-08
 
 ### Hinzugefügt
@@ -70,7 +78,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.2.1...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/supapilot/logbuch-loader/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/supapilot/logbuch-loader/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/supapilot/logbuch-loader/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/supapilot/logbuch-loader/compare/v1.1.0...v1.1.1
