@@ -586,7 +586,7 @@ struct ComposerView: View {
             } label: {
                 HStack(spacing: 6) {
                     Text("Unterlagen")
-                    InfoButton(text: "Lege die jeweiligen Unterlagen in das passende Feld – als PDF einzeln oder gesammelt als ZIP. Verwende die Originaldateien möglichst unbearbeitet und ohne sie umzubenennen, damit sie korrekt einsortiert werden. Sobald alles eingefügt ist, erstellt der Button „Ausbildungsbuch erstellen“ das fertige Ausbildungsbuch automatisch.")
+                    InfoButton(text: "Lege die jeweiligen Unterlagen in das passende Feld – als einzelne PDFs, gesammelt als ZIP oder als ganzen Ordner (dessen PDFs dann übernommen werden). Verwende die Originaldateien möglichst unbearbeitet und ohne sie umzubenennen, damit sie korrekt einsortiert werden. Sobald alles eingefügt ist, erstellt der Button „Ausbildungsbuch erstellen“ das fertige Ausbildungsbuch automatisch.")
                         .font(.body)
                 }
             }
@@ -681,8 +681,9 @@ struct ComposerView: View {
     }
 }
 
-/// Ein einzelnes Drag-&-Drop-Feld mit Überschrift. Nimmt PDF-Dateien per
-/// Finder-Drop **oder** per Klick (Datei-Dialog) an und zeigt sie als
+/// Ein einzelnes Drag-&-Drop-Feld mit Überschrift. Nimmt PDF-/ZIP-Dateien
+/// **oder ganze Ordner** per Finder-Drop bzw. per Klick (Datei-Dialog) an –
+/// Ordner werden dabei nach passenden Dateien durchsucht – und zeigt sie als
 /// gestapeltes Dokument-Icon mit Anzahl; „X" entfernt alle wieder.
 struct DropField: View {
     let title: String
@@ -739,13 +740,50 @@ struct DropField: View {
             }
             .onHover { isHovering = $0 }
             .onTapGesture { chooseFiles() }
-            .help("Klicken zum Auswählen oder PDFs hierher ziehen")
+            .help("Klicken zum Auswählen oder PDFs, ZIPs bzw. einen ganzen Ordner hierher ziehen")
             .dropDestination(for: URL.self) { items, _ in
-                let accepted = items.filter { ["pdf", "zip"].contains($0.pathExtension.lowercased()) }
-                guard !accepted.isEmpty else { return false }
-                urls.append(contentsOf: accepted)
-                return true
+                add(items)
             } isTargeted: { isTargeted = $0 }
+    }
+
+    /// Akzeptierte Dateiendungen für dieses Feld.
+    private static let acceptedExtensions: Set<String> = ["pdf", "zip"]
+
+    /// Löst gezogene/ausgewählte URLs in eine flache Liste passender Dateien
+    /// auf: Ordner werden rekursiv nach PDF-/ZIP-Dateien durchsucht (in
+    /// natürlicher Namensreihenfolge), einzelne Dateien direkt übernommen.
+    private func acceptedFiles(from input: [URL]) -> [URL] {
+        let fm = FileManager.default
+        var result: [URL] = []
+        for url in input {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { continue }
+            if isDir.boolValue {
+                let files = (fm.enumerator(at: url, includingPropertiesForKeys: nil,
+                                           options: [.skipsHiddenFiles, .skipsPackageDescendants])?
+                    .compactMap { $0 as? URL }
+                    .filter { Self.acceptedExtensions.contains($0.pathExtension.lowercased()) } ?? [])
+                    .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+                result.append(contentsOf: files)
+            } else if Self.acceptedExtensions.contains(url.pathExtension.lowercased()) {
+                result.append(url)
+            }
+        }
+        return result
+    }
+
+    /// Fügt neue Dateien hinzu und überspringt bereits vorhandene (nach Pfad).
+    /// Gibt `true` zurück, sobald mindestens eine passende Datei gefunden wurde
+    /// – auch wenn alle schon vorhanden waren –, damit der Drop als
+    /// angenommen gilt.
+    @discardableResult
+    private func add(_ input: [URL]) -> Bool {
+        let accepted = acceptedFiles(from: input)
+        guard !accepted.isEmpty else { return false }
+        var seen = Set(urls.map(\.standardizedFileURL.path))
+        let fresh = accepted.filter { seen.insert($0.standardizedFileURL.path).inserted }
+        urls.append(contentsOf: fresh)
+        return true
     }
 
     @ViewBuilder
@@ -766,16 +804,18 @@ struct DropField: View {
         }
     }
 
-    /// Öffnet den Finder-Dialog zur manuellen Auswahl einer oder mehrerer PDFs.
+    /// Öffnet den Finder-Dialog zur manuellen Auswahl von PDF-/ZIP-Dateien
+    /// oder ganzen Ordnern (deren Inhalt dann übernommen wird).
     private func chooseFiles() {
         let panel = NSOpenPanel()
-        panel.title = "PDF- oder ZIP-Dateien auswählen"
+        panel.title = "PDF-/ZIP-Dateien oder Ordner auswählen"
+        panel.message = "Wähle einzelne PDF-/ZIP-Dateien oder einen Ordner mit den passenden Dateien."
         panel.canChooseFiles = true
-        panel.canChooseDirectories = false
+        panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
         panel.allowedContentTypes = [.pdf, .zip]
         if panel.runModal() == .OK {
-            urls.append(contentsOf: panel.urls)
+            add(panel.urls)
         }
     }
 }

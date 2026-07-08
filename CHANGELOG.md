@@ -7,6 +7,15 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.2.0] – 2026-07-08
+
+### Hinzugefügt
+- In die Drag-&-Drop-Felder des Composers lassen sich jetzt auch **ganze
+  Ordner** ziehen (oder per Klick auswählen). Der Ordner wird nach passenden
+  PDF-/ZIP-Dateien durchsucht und alle werden übernommen – das erspart das
+  einzelne Hineinziehen dutzender Dateien. Bereits vorhandene Dateien werden
+  dabei nicht doppelt hinzugefügt.
+
 ## [1.1.1] – 2026-07-06
 
 ### Behoben
@@ -39,7 +48,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.1.1...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/supapilot/logbuch-loader/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/supapilot/logbuch-loader/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/supapilot/logbuch-loader/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/supapilot/logbuch-loader/releases/tag/v1.0.0
