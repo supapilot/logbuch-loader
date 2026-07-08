@@ -11,11 +11,26 @@ import Foundation
 import Compression
 
 enum ZipExtractor {
+    // Sicherheitsgrenzen gegen manipulierte („ZIP-Bomben") oder versehentlich
+    // riesige Archive. Für echte Ausbildungsunterlagen sind alle Werte sehr
+    // großzügig – sie greifen nur bei missbräuchlichen Dateien.
+    /// Höchstgröße des Archivs selbst (wird komplett in den Speicher gelesen).
+    private static let maxArchiveBytes = 1024 * 1024 * 1024          // 1 GB
+    /// Höchstzahl der extrahierten PDFs pro Archiv.
+    private static let maxEntries = 1000
+    /// Höchstgröße einer einzelnen entpackten Datei (begrenzt die Allokation).
+    private static let maxEntryBytes = 200 * 1024 * 1024             // 200 MB
+    /// Höchstsumme aller entpackten Dateien pro Archiv.
+    private static let maxTotalBytes = 1024 * 1024 * 1024            // 1 GB
+
     /// Extrahiert alle in `zipURL` enthaltenen PDFs nach `dir` und gibt deren
     /// URLs zurück (Original-Dateinamen, ohne innere Pfade).
     static func extractPDFs(from zipURL: URL, into dir: URL) -> [URL] {
         let granted = zipURL.startAccessingSecurityScopedResource()
         defer { if granted { zipURL.stopAccessingSecurityScopedResource() } }
+        // Zu große Archive gar nicht erst vollständig in den Speicher laden.
+        if let size = try? zipURL.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           size > maxArchiveBytes { return [] }
         guard let raw = try? Data(contentsOf: zipURL) else { return [] }
         return extractPDFs(data: raw, into: dir)
     }
@@ -28,7 +43,10 @@ enum ZipExtractor {
         var result: [URL] = []
         var p = cdOffset
         var index = 0
+        var totalBytes = 0
         for _ in 0..<entryCount {
+            // Nicht mehr als maxEntries Dateien extrahieren.
+            if result.count >= maxEntries { break }
             guard p + 46 <= data.count, readU32(data, p) == 0x02014b50 else { break }
             let method = readU16(data, p + 10)
             let compSize = Int(readU32(data, p + 20))
@@ -47,6 +65,11 @@ enum ZipExtractor {
             guard !name.hasSuffix("/"), lower.hasSuffix(".pdf"),
                   !name.hasPrefix("__MACOSX"), !((name as NSString).lastPathComponent.hasPrefix("._")),
                   compSize != 0xFFFFFFFF, uncompSize != 0xFFFFFFFF, localOffset != 0xFFFFFFFF else { continue }
+
+            // Größengrenzen: zu große Einzeldatei überspringen, bei Überschreiten
+            // der Gesamtsumme abbrechen (verhindert übermäßige Speicher-Allokation).
+            guard uncompSize <= maxEntryBytes, compSize <= maxEntryBytes else { continue }
+            if totalBytes + uncompSize > maxTotalBytes { break }
 
             // Datenoffset aus dem lokalen Header.
             guard localOffset + 30 <= data.count, readU32(data, localOffset) == 0x04034b50 else { continue }
@@ -72,6 +95,7 @@ enum ZipExtractor {
             }
             if (try? pdfData.write(to: dest)) != nil {
                 result.append(dest)
+                totalBytes += pdfData.count
                 index += 1
             }
         }

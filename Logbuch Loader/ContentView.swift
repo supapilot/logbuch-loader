@@ -15,6 +15,15 @@ import UniformTypeIdentifiers
 /// Sortierbare Spalte der Fahrten-Liste.
 enum DriveSortField { case number, id, ship, date }
 
+/// Ein vom Nutzer im Composer angelegtes Zusatzkapitel: frei vergebener Name
+/// und die zugehörigen Dateien (nur PDFs bzw. ein ZIP, aus dem PDFs entnommen
+/// werden). Erscheint im Ausbildungsbuch nach „Zertifikate".
+struct CustomChapter: Identifiable {
+    let id = UUID()
+    var name: String
+    var urls: [URL] = []
+}
+
 @Observable
 final class LoginViewModel {
     var username = ""
@@ -41,6 +50,9 @@ final class LoginViewModel {
     /// Dateien der Composer-Felder (im Model, damit „Logbuch laden" sie direkt
     /// befüllen kann). Reihenfolge wie die Felder: Ausbildungsplan … Zertifikate.
     var composerFiles: [[URL]] = Array(repeating: [], count: 6)
+
+    /// Optionale, vom Nutzer angelegte Zusatzkapitel (max. 3).
+    var customChapters: [CustomChapter] = []
 
     // Fahrten-Liste (Einzel-Download)
     var drives: [DriveDownload] = []            // vorbereitet, geladen von loadDrivesList
@@ -449,9 +461,27 @@ final class LoginViewModel {
     }
 }
 
+/// Misst die natürliche Höhe des Fensterinhalts (für die scrollbare Begrenzung).
+private struct ContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct ContentView: View {
     @State private var model = LoginViewModel()
     @State private var selectedView: AppView = .downloader
+
+    /// Gemessene natürliche Höhe des Inhalts.
+    @State private var contentHeight: CGFloat = 0
+
+    /// Maximale Fensterhöhe (sichtbarer Bildschirm abzüglich Rand). Darüber wird
+    /// der Inhalt scrollbar, statt das Fenster über den Bildschirm hinaus wachsen
+    /// zu lassen.
+    private var maxContentHeight: CGFloat {
+        (NSScreen.main?.visibleFrame.height ?? 900) - 40
+    }
 
     /// Die beiden Hauptansichten, umschaltbar über den Segment-Switcher.
     enum AppView: String, CaseIterable, Identifiable {
@@ -461,6 +491,7 @@ struct ContentView: View {
     }
 
     var body: some View {
+        ScrollView {
         VStack(spacing: 16) {
             AppHeader()
 
@@ -488,9 +519,14 @@ struct ContentView: View {
 
             AppFooter()
         }
-        .fixedSize(horizontal: false, vertical: true)
         .frame(minWidth: 500)
         .padding()
+        .background(GeometryReader { geo in
+            Color.clear.preference(key: ContentHeightKey.self, value: geo.size.height)
+        })
+        }
+        .frame(height: contentHeight > 0 ? min(contentHeight, maxContentHeight) : nil)
+        .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
         .task { await model.attemptAutoLogin() }
         .onChange(of: model.user == nil) { _, loggedOut in
             // Nach dem Abmelden wieder auf die Downloader-Ansicht zurücksetzen.
@@ -537,14 +573,26 @@ struct ComposerView: View {
     /// Läuft gerade ein Erstellungsvorgang (inkl. Logo-Download)?
     @State private var isBuilding = false
 
+    /// Steuert das „Kapitel hinzufügen"-Popup und den eingegebenen Namen.
+    @State private var showAddChapter = false
+    @State private var chapterNameDraft = ""
+
+    /// Höchstzahl zusätzlicher, benutzerdefinierter Kapitel (eine weitere
+    /// Rasterzeile mit drei Feldern).
+    private let maxCustomChapters = 3
+
     private let columns = [
         GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
     ]
 
-    /// Ob in irgendeinem Feld mindestens eine Datei liegt.
-    private var hasFiles: Bool { !model.composerFiles.allSatisfy(\.isEmpty) }
+    /// Ob in irgendeinem Feld (fest oder benutzerdefiniert) mindestens eine
+    /// Datei liegt.
+    private var hasFiles: Bool {
+        !model.composerFiles.allSatisfy(\.isEmpty)
+            || model.customChapters.contains { !$0.urls.isEmpty }
+    }
 
     var body: some View {
         VStack(spacing: 18) {
@@ -578,17 +626,48 @@ struct ComposerView: View {
             }
 
             GroupBox {
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(model.composerFiles.indices, id: \.self) { index in
-                        DropField(title: titles[index], info: infoTexts[index], urls: $model.composerFiles[index])
+                VStack(spacing: 14) {
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(model.composerFiles.indices, id: \.self) { index in
+                            DropField(title: titles[index], info: infoTexts[index], urls: $model.composerFiles[index])
+                        }
+                        // Benutzerdefinierte Kapitel – verhalten sich wie die
+                        // festen Felder und laufen im selben Raster weiter.
+                        ForEach($model.customChapters) { $chapter in
+                            let chapterID = chapter.id
+                            DropField(title: chapter.name,
+                                      info: "Füge hier die Dateien für das Kapitel „\(chapter.name)“ ein.",
+                                      urls: $chapter.urls,
+                                      onRemove: { model.customChapters.removeAll { $0.id == chapterID } })
+                        }
+                    }
+
+                    // Mittiger „+"-Button zum Anlegen eines Zusatzkapitels;
+                    // verschwindet, sobald das Maximum erreicht ist.
+                    if model.customChapters.count < maxCustomChapters {
+                        Button {
+                            chapterNameDraft = ""
+                            showAddChapter = true
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Kapitel hinzufügen")
                     }
                 }
             } label: {
                 HStack(spacing: 6) {
                     Text("Unterlagen")
-                    InfoButton(text: "Lege die jeweiligen Unterlagen in das passende Feld – als einzelne PDFs, gesammelt als ZIP oder als ganzen Ordner (dessen PDFs dann übernommen werden). Verwende die Originaldateien möglichst unbearbeitet und ohne sie umzubenennen, damit sie korrekt einsortiert werden. Sobald alles eingefügt ist, erstellt der Button „Ausbildungsbuch erstellen“ das fertige Ausbildungsbuch automatisch.")
+                    InfoButton(text: "Lege die jeweiligen Unterlagen in das passende Feld – als einzelne PDFs, gesammelt als ZIP oder als ganzen Ordner (dessen PDFs dann übernommen werden). Verwende die Originaldateien möglichst unbearbeitet und ohne sie umzubenennen, damit sie korrekt einsortiert werden. Über „+“ kannst du bis zu drei eigene Kapitel ergänzen; sie erscheinen im Ausbildungsbuch nach „Zertifikate“. Sobald alles eingefügt ist, erstellt der Button „Ausbildungsbuch erstellen“ das fertige Ausbildungsbuch automatisch.")
                         .font(.body)
                 }
+            }
+            .sheet(isPresented: $showAddChapter) {
+                AddChapterSheet(name: $chapterNameDraft,
+                                onCancel: { showAddChapter = false },
+                                onConfirm: { addChapter(); showAddChapter = false })
             }
 
             VStack(spacing: 8) {
@@ -619,6 +698,15 @@ struct ComposerView: View {
         .groupBoxStyle(SectionGroupBoxStyle())
         .frame(maxWidth: 500)
         .padding(.top, 4)
+    }
+
+    /// Legt aus dem eingegebenen Namen ein neues Zusatzkapitel an (bis zum
+    /// Maximum). Leere Namen werden ignoriert.
+    private func addChapter() {
+        let name = chapterNameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, model.customChapters.count < maxCustomChapters else { return }
+        model.customChapters.append(CustomChapter(name: name))
+        chapterNameDraft = ""
     }
 
     /// Baut das vollständige Ausbildungsbuch (Deckblatt, Inhaltsverzeichnis,
@@ -655,7 +743,15 @@ struct ComposerView: View {
                 }
             }
 
-            guard let data = LogbookComposer.build(fieldFiles: model.composerFiles, user: user, logo: logo) else {
+            // Nur nicht-leere Zusatzkapitel übergeben (leere werden – wie leere
+            // Standardfelder – nicht ins Ausbildungsbuch aufgenommen).
+            let customChapters = model.customChapters
+                .map { (name: $0.name, files: $0.urls) }
+                .filter { !$0.files.isEmpty }
+
+            guard let data = LogbookComposer.build(fieldFiles: model.composerFiles,
+                                                   customChapters: customChapters,
+                                                   user: user, logo: logo) else {
                 resultIsError = true
                 resultMessage = "Das Ausbildungsbuch konnte nicht erstellt werden."
                 return
@@ -681,6 +777,42 @@ struct ComposerView: View {
     }
 }
 
+/// Kleines Popup zum Anlegen eines Zusatzkapitels: mittiger Titel, Namensfeld
+/// und Abbrechen/Hinzufügen. „Hinzufügen" ist erst bei nicht-leerem Namen aktiv.
+struct AddChapterSheet: View {
+    @Binding var name: String
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    private var canConfirm: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Kapitel hinzufügen")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            TextField("Kapitelname", text: $name)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { if canConfirm { onConfirm() } }
+
+            HStack {
+                Button("Abbrechen", role: .cancel, action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Hinzufügen", action: onConfirm)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canConfirm)
+            }
+        }
+        .padding(20)
+        .frame(width: 320)
+    }
+}
+
 /// Ein einzelnes Drag-&-Drop-Feld mit Überschrift. Nimmt PDF-/ZIP-Dateien
 /// **oder ganze Ordner** per Finder-Drop bzw. per Klick (Datei-Dialog) an –
 /// Ordner werden dabei nach passenden Dateien durchsucht – und zeigt sie als
@@ -689,6 +821,8 @@ struct DropField: View {
     let title: String
     let info: String
     @Binding var urls: [URL]
+    /// Nur für benutzerdefinierte Kapitel gesetzt: entfernt das ganze Feld.
+    var onRemove: (() -> Void)? = nil
     @State private var isTargeted = false
     @State private var isHovering = false
 
@@ -703,6 +837,15 @@ struct DropField: View {
                     .minimumScaleFactor(0.5)
                 InfoButton(text: info)
                 Spacer(minLength: 0)
+                if let onRemove {
+                    Button(action: onRemove) {
+                        Image(systemName: "trash")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Kapitel entfernen")
+                }
             }
 
             dropBox
@@ -781,7 +924,19 @@ struct DropField: View {
         let accepted = acceptedFiles(from: input)
         guard !accepted.isEmpty else { return false }
         var seen = Set(urls.map(\.standardizedFileURL.path))
-        let fresh = accepted.filter { seen.insert($0.standardizedFileURL.path).inserted }
+        // Pro Feld ist höchstens eine ZIP sinnvoll; weitere ZIPs werden
+        // ignoriert. PDFs bleiben unbegrenzt; Ordner wurden bereits in
+        // acceptedFiles(from:) zu ihren PDFs aufgelöst.
+        var hasZip = urls.contains { $0.pathExtension.lowercased() == "zip" }
+        var fresh: [URL] = []
+        for url in accepted {
+            if url.pathExtension.lowercased() == "zip" {
+                if hasZip { continue }
+                hasZip = true
+            }
+            guard seen.insert(url.standardizedFileURL.path).inserted else { continue }
+            fresh.append(url)
+        }
         urls.append(contentsOf: fresh)
         return true
     }

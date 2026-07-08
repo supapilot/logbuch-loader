@@ -45,6 +45,7 @@ enum LogbuchError: LocalizedError {
     case invalidCredentials
     case network(String)
     case server(Int)
+    case notPDF
     case unexpected
 
     var errorDescription: String? {
@@ -57,6 +58,8 @@ enum LogbuchError: LocalizedError {
             return "Netzwerkfehler: \(message)"
         case .server(let code):
             return "Der Server hat unerwartet geantwortet (HTTP \(code))."
+        case .notPDF:
+            return "Der Server hat kein gültiges PDF geliefert (evtl. abgemeldet oder Fehlerseite)."
         case .unexpected:
             return "Unerwarteter Fehler bei der Anmeldung."
         }
@@ -253,8 +256,14 @@ final class LogbuchService {
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw LogbuchError.server(http.statusCode)
         }
+        // Inhalt muss tatsächlich ein PDF sein: schützt davor, eine mit Status
+        // 200 gelieferte HTML-Fehler-/Login-Seite als „PDF" zu speichern.
+        guard data.starts(with: Self.pdfMagic) else { throw LogbuchError.notPDF }
         return data
     }
+
+    /// Datei-Signatur eines PDF („%PDF").
+    nonisolated private static let pdfMagic = Array("%PDF".utf8)
 
     /// Lädt das PDF einer Fahrt.
     nonisolated func downloadPDF(for drive: Drive) async throws -> Data {

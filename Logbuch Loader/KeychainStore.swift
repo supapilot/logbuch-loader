@@ -34,7 +34,9 @@ enum KeychainStore {
 
         let attributes: [String: Any] = [
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            // Zugriff nur, solange der Mac entsperrt ist – restriktiver als
+            // AfterFirstUnlock (kein Zugriff mehr, sobald wieder gesperrt).
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
         ]
 
         let status = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)

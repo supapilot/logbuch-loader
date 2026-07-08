@@ -43,13 +43,16 @@ enum LogbookComposer {
 
     /// Erzeugt das gesamte Ausbildungsbuch als PDF-Daten.
     /// `fieldFiles` in Feld-Reihenfolge (Ausbildungsplan … Zertifikate).
+    /// `customChapters` sind optionale Zusatzkapitel (Name + Dateien), die – in
+    /// der übergebenen Reihenfolge – hinter „Zertifikate" erscheinen.
     /// `logo` ist das zur Laufzeit geladene Logo der Lotsenbrüderschaft
     /// (nil = ohne Logo).
     @MainActor
-    static func build(fieldFiles: [[URL]], user: LogbuchUser, logo: NSImage? = nil) -> Data? {
+    static func build(fieldFiles: [[URL]],
+                      customChapters: [(name: String, files: [URL])] = [],
+                      user: LogbuchUser, logo: NSImage? = nil) -> Data? {
         let titles = ["Ausbildungsverlauf", "Ausbildungsstand", "Ausbildungsfahrten",
                       "Simulatorausbildung", "Theoretische Ausbildung", "Zertifikate"]
-        let romans = ["I", "II", "III", "IV", "V", "VI"]
 
         // Temporäres Arbeitsverzeichnis für aus ZIPs entpackte PDFs.
         let workDir = FileManager.default.temporaryDirectory
@@ -57,31 +60,46 @@ enum LogbookComposer {
         try? FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: workDir) }
 
-        // Nur Kapitel mit mindestens einer Datei; fortlaufend römisch nummeriert.
-        // ZIP-Dateien werden vorab in ihre enthaltenen PDFs aufgelöst.
+        // Nur Kapitel mit mindestens einer Datei. ZIP-Dateien werden vorab in
+        // ihre enthaltenen PDFs aufgelöst; leere Kapitel entfallen.
         let ausbildungsfahrtenIndex = 2   // „Ausbildungsfahrten"
         let simulatorFieldIndex = 3       // „Simulatorfahrten"
         let zertifikateIndex = 5          // „Zertifikate"
-        let nonEmpty: [(origIndex: Int, title: String, files: [URL])] = (0..<6).compactMap { i in
+
+        // Feste Kapitel in Feld-Reihenfolge, jeweils passend sortiert.
+        // Chronologisch (ältestes zuerst), wo eine Datumslogik greift:
+        // Ausbildungsfahrten nach dem Datum im Dateinamen, Simulatorfahrten nach
+        // dem Zeitstempel der ersten Seite; alle übrigen alphabetisch.
+        var sections: [(title: String, files: [URL])] = []
+        for i in 0..<6 {
             let raw = i < fieldFiles.count ? fieldFiles[i] : []
             let pdfs = expandArchives(raw, into: workDir)
-            return pdfs.isEmpty ? nil : (i, titles[i], pdfs)
-        }
-        guard !nonEmpty.isEmpty else { return nil }
-        let chapters = nonEmpty.enumerated().map { idx, ch -> Chapter in
-            // Chronologisch sortieren (ältestes zuerst), wo eine Datumslogik
-            // greift: Ausbildungsfahrten nach dem Datum im Dateinamen (wie
-            // „Fahrten laden"), Simulatorfahrten nach dem Zeitstempel auf der
-            // ersten Seite. Alle übrigen Felder – und Dateien ohne erkennbares
-            // Datum – werden alphabetisch sortiert.
+            guard !pdfs.isEmpty else { continue }
             let files: [URL]
-            switch ch.origIndex {
-            case ausbildungsfahrtenIndex: files = sortedFiles(ch.files, date: driveFileDate)
-            case simulatorFieldIndex:     files = sortedFiles(ch.files, date: simulatorDate)
-            case zertifikateIndex:        files = sortedFiles(ch.files, date: certificateFileDate)
-            default:                      files = sortedFiles(ch.files, date: { _ in nil })
+            switch i {
+            case ausbildungsfahrtenIndex: files = sortedFiles(pdfs, date: driveFileDate)
+            case simulatorFieldIndex:     files = sortedFiles(pdfs, date: simulatorDate)
+            case zertifikateIndex:        files = sortedFiles(pdfs, date: certificateFileDate)
+            default:                      files = sortedFiles(pdfs, date: { _ in nil })
             }
-            return Chapter(roman: romans[idx], title: ch.title, files: files)
+            sections.append((titles[i], files))
+        }
+
+        // Benutzerdefinierte Zusatzkapitel – hinter „Zertifikate", in der vom
+        // Nutzer angelegten Reihenfolge; Dateien alphabetisch (natürlich).
+        for chapter in customChapters {
+            let pdfs = expandArchives(chapter.files, into: workDir)
+            guard !pdfs.isEmpty else { continue }
+            let name = chapter.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            sections.append((name.isEmpty ? "Weiteres Kapitel" : name,
+                             sortedFiles(pdfs, date: { _ in nil })))
+        }
+
+        guard !sections.isEmpty else { return nil }
+
+        // Fortlaufende römische Nummerierung über alle Kapitel hinweg.
+        let chapters = sections.enumerated().map { i, s in
+            Chapter(roman: romanNumeral(i + 1), title: s.title, files: s.files)
         }
         let info = CoverInfo(user: user)
 
@@ -131,6 +149,17 @@ enum LogbookComposer {
         if let m = planGroupRegexLA.firstMatch(in: name, range: full) { return ns.substring(with: m.range(at: 1)) }
         if let m = planGroupRegexStd.firstMatch(in: name, range: full) { return ns.substring(with: m.range(at: 1)) }
         return nil
+    }
+
+    /// Römische Ziffer für `n` (≥ 1). Deckt beliebig viele Kapitel ab.
+    private static func romanNumeral(_ n: Int) -> String {
+        let table: [(Int, String)] = [(10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]
+        var value = max(n, 1)
+        var result = ""
+        for (v, r) in table {
+            while value >= v { result += r; value -= v }
+        }
+        return result
     }
 
     // MARK: - ZIP-Auflösung

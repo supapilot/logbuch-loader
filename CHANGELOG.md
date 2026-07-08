@@ -7,6 +7,28 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.2.1] – 2026-07-08
+
+### Hinzugefügt
+- **Eigene Kapitel im Composer:** Über den „+"-Button unter „Unterlagen" lassen
+  sich bis zu drei zusätzliche Kapitel mit frei wählbarem Namen anlegen. Sie
+  erhalten eigene Drag-&-Drop-Felder und erscheinen im Ausbildungsbuch nach
+  „Zertifikate". Leer gelassene Kapitel werden – wie leere Standardfelder – nicht
+  aufgenommen.
+
+### Geändert
+- Pro Feld kann nur noch eine ZIP-Datei abgelegt werden (mehrere lose PDFs bzw.
+  ein Ordner bleiben möglich).
+
+### Sicherheit
+- Zugangsdaten im Schlüsselbund nutzen jetzt `WhenUnlocked` (restriktiver als
+  bisher `AfterFirstUnlock`).
+- Heruntergeladene Dateien werden vor dem Speichern auf eine gültige
+  PDF-Signatur geprüft (fängt z. B. HTML-Fehlerseiten mit Status 200 ab).
+- Der ZIP-Entpacker begrenzt Archivgröße, Dateizahl sowie Einzel- und
+  Gesamtgröße, um manipulierte Archive („ZIP-Bomben") abzuwehren.
+- `SECURITY.md` mit Meldeweg für Sicherheitslücken ergänzt.
+
 ## [1.2.0] – 2026-07-08
 
 ### Hinzugefügt
@@ -48,7 +70,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.2.0...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/supapilot/logbuch-loader/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/supapilot/logbuch-loader/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/supapilot/logbuch-loader/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/supapilot/logbuch-loader/compare/v1.0.0...v1.1.0
