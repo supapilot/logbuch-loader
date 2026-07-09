@@ -7,6 +7,15 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.1] – 2026-07-09
+
+### Geändert
+- Kürzerer, gestraffter Hinweistext im „Unterlagen“-Bereich.
+
+### Behoben
+- Beim Verschieben eines Feldes markiert der Landeplatz jetzt maßgleich das Feld,
+  statt es mit einem größeren Rahmen um Titel und Ablagefläche zu umschließen.
+
 ## [1.3.0] – 2026-07-08
 
 ### Hinzugefügt
@@ -78,7 +87,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.0...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/supapilot/logbuch-loader/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/supapilot/logbuch-loader/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/supapilot/logbuch-loader/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/supapilot/logbuch-loader/compare/v1.1.1...v1.2.0

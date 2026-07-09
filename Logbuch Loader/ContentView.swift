@@ -769,7 +769,7 @@ struct ComposerView: View {
             } label: {
                 HStack(spacing: 6) {
                     Text("Unterlagen")
-                    InfoButton(text: "Lege die jeweiligen Unterlagen in das passende Feld – als einzelne PDFs, gesammelt als ZIP oder als ganzen Ordner (dessen PDFs dann übernommen werden). Verwende die Originaldateien möglichst unbearbeitet und ohne sie umzubenennen, damit sie korrekt einsortiert werden. Über „+“ kannst du bis zu drei eigene Kapitel ergänzen. Halte ein Feld gedrückt und ziehe es, um die Reihenfolge zu ändern – sie bestimmt die Kapitelreihenfolge im Ausbildungsbuch. Sobald alles eingefügt ist, erstellt der Button „Ausbildungsbuch erstellen“ das fertige Ausbildungsbuch automatisch.")
+                    InfoButton(text: "Lege die Unterlagen ins passende Feld – als PDFs, ZIP oder ganzen Ordner. Verwende die Originaldateien möglichst unbearbeitet, damit sie korrekt einsortiert werden. Über „+“ ergänzt du bis zu drei eigene Kapitel; per Ziehen ordnest du die Felder um – ihre Reihenfolge bestimmt die Kapitelreihenfolge im Ausbildungsbuch.")
                         .font(.body)
                 }
             }
@@ -826,13 +826,16 @@ struct ComposerView: View {
                 Color.clear
                     .preference(key: CellFrameKey.self, value: [f.id: geo.frame(in: .named(gridSpace))])
             })
-            // Gezogenes Feld ausblenden, aber Platz halten; Landeplatz andeuten.
+            // Gezogenes Feld ausblenden (die sichtbare Kopie schwebt als
+            // `dragGhost`); als Landeplatz bleibt nur der blaue Rahmen der
+            // Ablagefläche stehen – ohne Titel, Info-Button oder Symbol.
             .opacity(isDragging ? 0 : 1)
-            .overlay {
+            .overlay(alignment: .bottom) {
                 if isDragging {
                     RoundedRectangle(cornerRadius: DropField.cornerRadius, style: .continuous)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
-                        .foregroundStyle(Color.accentColor.opacity(0.5))
+                        .strokeBorder(Color.accentColor,
+                                      style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                        .frame(height: DropField.boxHeight)
                 }
             }
             .gesture(reorderGesture(for: f.id))
@@ -1016,6 +1019,8 @@ struct AddChapterSheet: View {
 struct DropField: View {
     /// Eckenradius der Ablagefläche – auch vom Zieh-Platzhalter im Raster genutzt.
     static let cornerRadius: CGFloat = 10
+    /// Höhe der Ablagefläche – auch vom Zieh-Platzhalter im Raster genutzt.
+    static let boxHeight: CGFloat = 100
 
     let title: String
     let info: String
@@ -1054,7 +1059,7 @@ struct DropField: View {
     private var dropBox: some View {
         content
             .frame(maxWidth: .infinity)
-            .frame(height: 100)
+            .frame(height: Self.boxHeight)
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
