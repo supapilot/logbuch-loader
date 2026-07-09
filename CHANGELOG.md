@@ -7,6 +7,28 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.2] – 2026-07-09
+
+### Hinzugefügt
+- Zwei neue Standardkapitel im Composer: **Ausbildungsverlauf** und
+  **Aufgabenstellung**. Damit gibt es jetzt acht Standardfelder (vier je Reihe,
+  zwei Reihen): Ausbildungsverlauf, Ausbildungsplan, Ausbildungsstand,
+  Tagesnotizen, Aufgabenstellung, Ausbildungsfahrten, Simulatorfahrten,
+  Zertifikate.
+- Neues Feld **Abgabedatum** neben der Lotsenbrüderschaft (Datumsauswahl,
+  standardmäßig heute). Das Datum erscheint auf dem Deckblatt unter dem Namen
+  („am TT.MM.JJJJ").
+
+### Geändert
+- Feld „Tagesprotokolle“ heißt jetzt **„Tagesnotizen“**.
+- Jedes Kapitel erscheint im Ausbildungsbuch unter seinem Feldnamen.
+- Der Composer-Bereich ist breiter, damit vier Felder je Reihe mit
+  einzeiligem Titel und Info-Button nebeneinander passen.
+- Präzisere Hinweistexte in den Info-Buttons der Felder (u. a. „kalendarisches
+  Protokoll der Ausbildung“, „Tagesnotizen der Theorieausbildung“).
+- Der Info-Button sitzt jetzt direkt rechts neben der Auswahl der
+  Lotsenbrüderschaft.
+
 ## [1.3.1] – 2026-07-09
 
 ### Geändert
@@ -87,7 +109,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.1...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/supapilot/logbuch-loader/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/supapilot/logbuch-loader/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/supapilot/logbuch-loader/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/supapilot/logbuch-loader/compare/v1.2.0...v1.2.1

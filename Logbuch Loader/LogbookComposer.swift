@@ -28,6 +28,18 @@ enum LogbookComposer {
     private static let subtle    = NSColor(white: 0.45, alpha: 1)
     private static let ruleColor = NSColor(white: 0.80, alpha: 1)
 
+    /// Formatiert das Abgabedatum fürs Deckblatt als „TT.MM.JJJJ".
+    private static let abgabeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.dateFormat = "dd.MM.yyyy"
+        return f
+    }()
+
+    /// Das Abgabedatum als „TT.MM.JJJJ" (z. B. „09.07.2026") – gemeinsame Quelle
+    /// für die Anzeige im Composer und die Ausgabe auf dem Deckblatt.
+    static func abgabeDateString(_ date: Date) -> String { abgabeFormatter.string(from: date) }
+
     // Inhaltsverzeichnis-Layout (auch für die klickbaren Link-Rechtecke genutzt).
     private static let tocStartY: CGFloat = 360
     private static let tocRowH: CGFloat = 44
@@ -63,7 +75,8 @@ enum LogbookComposer {
     /// geladene Logo der Lotsenbrüderschaft (nil = ohne Logo).
     @MainActor
     static func build(chapters input: [ChapterInput],
-                      user: LogbuchUser, logo: NSImage? = nil) -> Data? {
+                      user: LogbuchUser, submissionDate: Date = Date(),
+                      logo: NSImage? = nil) -> Data? {
         // Temporäres Arbeitsverzeichnis für aus ZIPs entpackte PDFs.
         let workDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("LogbuchLoader-\(UUID().uuidString)", isDirectory: true)
@@ -104,7 +117,7 @@ enum LogbookComposer {
         // Deckblätter zählen mit (nur ohne sichtbare Nummer); die Seitenzahl wird
         // nur auf den hinzugefügten Inhaltsseiten angezeigt.
         var pageNumber = 0
-        drawCoverPage(ctx, info: info, logo: logo)
+        drawCoverPage(ctx, info: info, submission: abgabeDateString(submissionDate), logo: logo)
         drawTOCPage(ctx, chapters: chapters, info: info, logo: logo)
         for (index, chapter) in chapters.enumerated() {
             pageNumber += 1   // Kapiteldeckblatt zählt mit (unsichtbar)
@@ -299,7 +312,7 @@ enum LogbookComposer {
 
     // MARK: - Seiten zeichnen
 
-    private static func drawCoverPage(_ ctx: CGContext, info: CoverInfo, logo: NSImage?) {
+    private static func drawCoverPage(_ ctx: CGContext, info: CoverInfo, submission: String, logo: NSImage?) {
         ctx.beginPDFPage(nil)
         withAppKit(ctx) {
             drawLogo(logo, top: 120, maxWidth: 360, maxHeight: 150)
@@ -312,10 +325,11 @@ enum LogbookComposer {
             drawCentered("VORGELEGT VON", font: .systemFont(ofSize: 11, weight: .semibold),
                          color: subtle, y: 524, kern: 1.5)
             drawCentered(info.name, font: .systemFont(ofSize: 19, weight: .bold), color: ink, y: 544)
+            drawCentered("am \(submission)", font: .systemFont(ofSize: 15), color: ink, y: 576)
             if !info.zeitraum.isEmpty {
                 drawCentered("ZEITRAUM", font: .systemFont(ofSize: 11, weight: .semibold),
-                             color: subtle, y: 614, kern: 1.5)
-                drawCentered(info.zeitraum, font: .systemFont(ofSize: 17), color: ink, y: 634)
+                             color: subtle, y: 642, kern: 1.5)
+                drawCentered(info.zeitraum, font: .systemFont(ofSize: 17), color: ink, y: 662)
             }
         }
         ctx.endPDFPage()

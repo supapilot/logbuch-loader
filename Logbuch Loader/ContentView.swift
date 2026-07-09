@@ -20,43 +20,38 @@ enum DriveSortField { case number, id, ship, date }
 /// `ChapterField.sortKind` – seine Sortierregel. Dadurch bleibt beim freien
 /// Anordnen der Felder die richtige Sortierung erhalten.
 enum StandardChapter: String, CaseIterable, Identifiable {
-    case ausbildungsplan, ausbildungsstand, ausbildungsfahrten
-    case simulatorfahrten, tagesprotokolle, zertifikate
+    case ausbildungsverlauf, ausbildungsplan, ausbildungsstand, tagesnotizen
+    case aufgabenstellung, ausbildungsfahrten, simulatorfahrten, zertifikate
 
     var id: String { rawValue }
 
     /// Titel im Composer-Feld.
     var fieldTitle: String {
         switch self {
+        case .ausbildungsverlauf: return "Ausbildungsverlauf"
         case .ausbildungsplan:    return "Ausbildungsplan"
         case .ausbildungsstand:   return "Ausbildungsstand"
+        case .tagesnotizen:       return "Tagesnotizen"
+        case .aufgabenstellung:   return "Aufgabenstellung"
         case .ausbildungsfahrten: return "Ausbildungsfahrten"
         case .simulatorfahrten:   return "Simulatorfahrten"
-        case .tagesprotokolle:    return "Tagesprotokolle"
         case .zertifikate:        return "Zertifikate"
         }
     }
 
-    /// Kapiteltitel im fertigen Ausbildungsbuch (weicht teils vom Feldtitel ab).
-    var bookTitle: String {
-        switch self {
-        case .ausbildungsplan:    return "Ausbildungsverlauf"
-        case .ausbildungsstand:   return "Ausbildungsstand"
-        case .ausbildungsfahrten: return "Ausbildungsfahrten"
-        case .simulatorfahrten:   return "Simulatorausbildung"
-        case .tagesprotokolle:    return "Theoretische Ausbildung"
-        case .zertifikate:        return "Zertifikate"
-        }
-    }
+    /// Kapiteltitel im fertigen Ausbildungsbuch – entspricht dem Feldtitel.
+    var bookTitle: String { fieldTitle }
 
     var info: String {
         switch self {
+        case .ausbildungsverlauf: return "Füge hier das kalendarische Protokoll der Ausbildung ein."
         case .ausbildungsplan:    return "Füge hier den Ausbildungsplan ein."
         case .ausbildungsstand:   return "Füge hier den Ausbildungsstand ein. Wird automatisch übernommen, wenn du im Downloader „Logbuch laden“ nutzt."
+        case .tagesnotizen:       return "Füge hier die Tagesnotizen der Theorieausbildung ein."
+        case .aufgabenstellung:   return "Füge hier die Ausarbeitung zur Aufgabenstellung in der Freien Fahrt ein."
         case .ausbildungsfahrten: return "Füge hier alle Ausbildungsfahrten hinzu. Werden automatisch übernommen, wenn du im Downloader „Logbuch laden“ nutzt."
         case .simulatorfahrten:   return "Füge hier alle Simulatorfahrten hinzu."
-        case .tagesprotokolle:    return "Füge hier alle Tagesprotokolle hinzu."
-        case .zertifikate:        return "Füge hier alle Zertifikate hinzu."
+        case .zertifikate:        return "Füge hier die Fortbildungsnachweise bzw. Zertifikate ein."
         }
     }
 
@@ -668,6 +663,9 @@ struct ComposerView: View {
     /// Gewählte Lotsenbrüderschaft (Revier) – bestimmt das Logo im
     /// Ausbildungsbuch. Auswahl wird über App-Neustarts hinweg gemerkt.
     @AppStorage("composerBrotherhoodID") private var brotherhoodID: String = ""
+    /// Abgabedatum des Ausbildungsbuchs – erscheint auf dem Deckblatt.
+    /// Standardmäßig das heutige Datum.
+    @State private var submissionDate = Date()
     /// Läuft gerade ein Erstellungsvorgang (inkl. Logo-Download)?
     @State private var isBuilding = false
 
@@ -697,7 +695,9 @@ struct ComposerView: View {
     /// Einheitliche Feder-Animation fürs Umsortieren.
     private static let reorderAnimation = Animation.spring(response: 0.3, dampingFraction: 0.85)
 
+    // Vier Felder pro Reihe – die acht Standardkapitel füllen damit zwei Reihen.
     private let columns = [
+        GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
         GridItem(.flexible(), spacing: 14),
@@ -717,27 +717,50 @@ struct ComposerView: View {
                                  logoutDisabled: model.isDownloading)
             }
 
-            GroupBox {
-                HStack(spacing: 8) {
-                    Picker("Lotsenbrüderschaft", selection: $brotherhoodID) {
-                        Text("Bitte wählen …").tag("")
-                        ForEach(Brotherhood.all) { revier in
-                            Text(revier.name).tag(revier.id)
+            // Zwei gleich breite Felder nebeneinander: Lotsenbrüderschaft und
+            // Abgabedatum. Beide Steuerelemente linksbündig, Info-Button direkt
+            // rechts daneben.
+            HStack(alignment: .top, spacing: 14) {
+                GroupBox {
+                    HStack(spacing: 8) {
+                        Picker("Lotsenbrüderschaft", selection: $brotherhoodID) {
+                            Text("Bitte wählen …").tag("")
+                            ForEach(Brotherhood.all) { revier in
+                                Text(revier.name).tag(revier.id)
+                            }
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .fixedSize()
 
-                    InfoButton(text: "Die Logos sind Eigentum der jeweiligen Lotsenbrüderschaften. Mit dem Erstellen des Ausbildungsbuchs wird bestätigt, vorab die Erlaubnis zur Nutzung des Logos eingeholt zu haben.")
-                        .font(.body)
+                        InfoButton(text: "Die Logos sind Eigentum der jeweiligen Lotsenbrüderschaften. Mit dem Erstellen des Ausbildungsbuchs wird bestätigt, vorab die Erlaubnis zur Nutzung des Logos eingeholt zu haben.")
+                            .font(.body)
+
+                        Spacer(minLength: 0)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Lotsenbrüderschaft")
+                        InfoButton(text: "Optional: Wähle deine Lotsenbrüderschaft, dann erscheint ihr Logo im Ausbildungsbuch. Ohne Auswahl wird es ohne Logo erstellt.")
+                            .font(.body)
+                    }
                 }
-            } label: {
-                HStack(spacing: 6) {
-                    Text("Lotsenbrüderschaft")
-                    InfoButton(text: "Optional: Wähle deine Lotsenbrüderschaft, dann erscheint ihr Logo im Ausbildungsbuch. Ohne Auswahl wird es ohne Logo erstellt.")
-                        .font(.body)
+                .frame(maxWidth: .infinity)
+
+                GroupBox {
+                    HStack(spacing: 8) {
+                        DateFieldButton(date: $submissionDate)
+
+                        Spacer(minLength: 0)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Abgabedatum")
+                        InfoButton(text: "Wähle das Abgabedatum des Ausbildungsbuchs.")
+                            .font(.body)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
 
             GroupBox {
@@ -805,7 +828,7 @@ struct ComposerView: View {
             .padding(.top, 4)
         }
         .groupBoxStyle(SectionGroupBoxStyle())
-        .frame(maxWidth: 500)
+        .frame(maxWidth: 720)
         .padding(.top, 4)
     }
 
@@ -949,7 +972,8 @@ struct ComposerView: View {
                 LogbookComposer.ChapterInput(title: $0.bookTitle, files: $0.urls, sort: $0.sortKind)
             }
 
-            guard let data = LogbookComposer.build(chapters: chapters, user: user, logo: logo) else {
+            guard let data = LogbookComposer.build(chapters: chapters, user: user,
+                                                   submissionDate: submissionDate, logo: logo) else {
                 resultIsError = true
                 resultMessage = "Das Ausbildungsbuch konnte nicht erstellt werden."
                 return
@@ -1747,6 +1771,64 @@ struct InfoButton: View {
                     .frame(width: 230)
                     .padding(12)
             }
+    }
+}
+
+/// Datumsfeld: zeigt das Datum fest als „TT.MM.JJJJ" (mit führender Null) und
+/// öffnet zum Ändern den klassischen, systemeigenen Kalender (`NSDatePicker`).
+/// Ein reines Textfeld ist nötig, weil das native Stepper-Feld einstellige
+/// Tage/Monate mit Leerzeichen statt führender Null darstellt.
+struct DateFieldButton: View {
+    @Binding var date: Date
+    @State private var showPicker = false
+
+    var body: some View {
+        Button {
+            showPicker.toggle()
+        } label: {
+            FieldRow(systemImage: "calendar") {
+                Text(LogbookComposer.abgabeDateString(date))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            }
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showPicker, arrowEdge: .bottom) {
+            NativeCalendarPicker(date: $date)
+                .padding(10)
+        }
+    }
+}
+
+/// Der klassische macOS-Kalender (`NSDatePicker` im Kalender-Stil) für das
+/// Popover – rein nativ, ohne SwiftUI-Nachbau.
+struct NativeCalendarPicker: NSViewRepresentable {
+    @Binding var date: Date
+
+    func makeNSView(context: Context) -> NSDatePicker {
+        let picker = NSDatePicker()
+        picker.datePickerStyle = .clockAndCalendar
+        picker.datePickerElements = [.yearMonthDay]
+        picker.locale = Locale(identifier: "de_DE")
+        picker.isBordered = false
+        picker.drawsBackground = false
+        picker.focusRingType = .none
+        picker.dateValue = date
+        picker.target = context.coordinator
+        picker.action = #selector(Coordinator.dateChanged(_:))
+        return picker
+    }
+
+    func updateNSView(_ nsView: NSDatePicker, context: Context) {
+        if nsView.dateValue != date { nsView.dateValue = date }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(date: $date) }
+
+    final class Coordinator: NSObject {
+        private let date: Binding<Date>
+        init(date: Binding<Date>) { self.date = date }
+        @objc func dateChanged(_ sender: NSDatePicker) { date.wrappedValue = sender.dateValue }
     }
 }
 
