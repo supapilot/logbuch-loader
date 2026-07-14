@@ -94,3 +94,8 @@ das BLK Logbuch des Nutzers gesendet. Es werden keine Daten an Dritte
 ## Lizenz
 
 Veröffentlicht unter der [Apache-Lizenz 2.0](LICENSE).
+
+Die App wird mit [Sparkle](https://github.com/sparkle-project/Sparkle)
+(MIT-Lizenz) für die automatische Update-Prüfung ausgeliefert. Der vollständige
+Lizenztext aller mitgelieferten Drittanbieter-Komponenten steht in
+[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
