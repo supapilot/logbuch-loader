@@ -20,6 +20,10 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
   dokumentiert transparent die beiden Netzwerkverbindungen der App (BLK-Logbuch
   und optionaler Logo-Download) samt Zweck und Folgen einer Blockade.
 
+### Behoben
+- Die Felder „Lotsenbrüderschaft" und „Abgabedatum" im Composer sind jetzt
+  exakt gleich hoch; die Auswahlliste sitzt mittig im Feld.
+
 ## [1.3.2] – 2026-07-09
 
 ### Hinzugefügt

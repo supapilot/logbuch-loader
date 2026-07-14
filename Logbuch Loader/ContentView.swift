@@ -574,6 +574,31 @@ private struct ContentHeightKey: PreferenceKey {
     }
 }
 
+/// Größte natürliche Höhe der nebeneinanderliegenden Steuerelemente (Picker,
+/// Datumsauswahl). Damit werden die eingebetteten Felder gleich hoch – egal,
+/// welches Element das höhere ist.
+private struct ControlRowHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+/// Meldet die natürliche Höhe eines Steuerelements und setzt es zugleich auf die
+/// gemeinsame (maximale) Höhe – vertikal zentriert. Auf beide Felder angewandt,
+/// gleicht es sie symmetrisch an, ohne anzunehmen, welches das höhere ist.
+private struct EqualControlHeight: ViewModifier {
+    let height: CGFloat
+    func body(content: Content) -> some View {
+        content
+            .background(GeometryReader { geo in
+                Color.clear.preference(key: ControlRowHeightKey.self,
+                                       value: geo.size.height)
+            })
+            .frame(minHeight: height > 0 ? height : nil, alignment: .leading)
+    }
+}
+
 /// Sammelt die Rahmen aller Composer-Felder (Feld-ID → Rechteck) für die
 /// Zielbestimmung beim Umsortieren per Drag.
 private struct CellFrameKey: PreferenceKey {
@@ -666,6 +691,9 @@ struct ComposerView: View {
     /// Abgabedatum des Ausbildungsbuchs – erscheint auf dem Deckblatt.
     /// Standardmäßig das heutige Datum.
     @State private var submissionDate = Date()
+    /// Gemessene Höhe des Datums-Steuerelements – wird auf den Lotsenbrüderschaft-
+    /// Picker übertragen, damit beide eingebetteten Felder exakt gleich hoch sind.
+    @State private var controlRowHeight: CGFloat = 0
     /// Läuft gerade ein Erstellungsvorgang (inkl. Logo-Download)?
     @State private var isBuilding = false
 
@@ -738,6 +766,7 @@ struct ComposerView: View {
 
                         Spacer(minLength: 0)
                     }
+                    .modifier(EqualControlHeight(height: controlRowHeight))
                 } label: {
                     HStack(spacing: 6) {
                         Text("Lotsenbrüderschaft")
@@ -753,6 +782,7 @@ struct ComposerView: View {
 
                         Spacer(minLength: 0)
                     }
+                    .modifier(EqualControlHeight(height: controlRowHeight))
                 } label: {
                     HStack(spacing: 6) {
                         Text("Abgabedatum")
@@ -762,6 +792,7 @@ struct ComposerView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
+            .onPreferenceChange(ControlRowHeightKey.self) { controlRowHeight = $0 }
 
             GroupBox {
                 VStack(spacing: 14) {
