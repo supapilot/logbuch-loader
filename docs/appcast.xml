@@ -17,7 +17,7 @@
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>1.3.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/supapilot/logbuch-loader/releases/download/v1.3.3/Logbuch%20Loader%201.3.3.dmg" length="4656634" type="application/octet-stream" sparkle:edSignature="BcZ9hEXSpgVlTob1fTVji/Dc4GOtrgJreD1zV7AfHRsWVuPvBrvTrgtZNBqR2GMM5GQ6ZiM1rLa0dlQ2EJXvCA=="/>
+            <enclosure url="https://github.com/supapilot/logbuch-loader/releases/download/v1.3.3/Logbuch.Loader.1.3.3.dmg" length="4656634" type="application/octet-stream" sparkle:edSignature="BcZ9hEXSpgVlTob1fTVji/Dc4GOtrgJreD1zV7AfHRsWVuPvBrvTrgtZNBqR2GMM5GQ6ZiM1rLa0dlQ2EJXvCA=="/>
         </item>
     </channel>
 </rss>
