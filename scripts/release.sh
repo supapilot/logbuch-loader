@@ -54,10 +54,26 @@ APP="$BUILD_DIR/Build/Products/Release/$APP_NAME"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 echo "▸ Version $VERSION"
 
-# ── 2) get-task-allow strippen: nur Außen-Bundle neu siegeln ──────────────────
-#    (xcodebuild hat Sparkle.framework + XPC + Updater.app bereits mit Developer
-#     ID + Hardened Runtime signiert; kein --deep, damit deren Signaturen bleiben)
-echo "▸ [2/6] App neu signieren (ohne get-task-allow) …"
+# ── 2) Sparkle-Komponenten + App mit Developer ID neu signieren ───────────────
+#    Das Sparkle-Binary-Framework kommt ad-hoc-signiert; xcodebuild signiert die
+#    tief verschachtelten Helfer (Updater.app, Autoupdate, XPC-Dienste) NICHT mit
+#    der Developer ID. Daher hier von innen nach außen explizit signieren
+#    (Hardened Runtime + Secure Timestamp), zuletzt das App-Bundle (das dabei
+#    auch get-task-allow verliert). Kein --deep.
+echo "▸ [2/6] Sparkle-Komponenten + App signieren …"
+FW="$APP/Contents/Frameworks/Sparkle.framework"
+FWV="$FW/Versions/$(readlink "$FW/Versions/Current")"
+for item in \
+	"XPCServices/Downloader.xpc" \
+	"XPCServices/Installer.xpc" \
+	"Updater.app" \
+	"Autoupdate"; do
+	codesign --force --options runtime --timestamp --runtime-version 14.0 \
+		--sign "$SIGN_IDENTITY" "$FWV/$item"
+done
+codesign --force --options runtime --timestamp --runtime-version 14.0 \
+	--sign "$SIGN_IDENTITY" "$FW"
+
 codesign --force --options runtime --timestamp --runtime-version 14.0 \
 	--sign "$SIGN_IDENTITY" --entitlements "$ENTITLEMENTS" "$APP"
 
