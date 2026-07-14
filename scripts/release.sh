@@ -24,8 +24,11 @@ PROJECT="Logbuch Loader.xcodeproj"
 SCHEME="Logbuch Loader"
 APP_NAME="Logbuch Loader.app"
 ENTITLEMENTS="Logbuch_Loader.entitlements"
-BUILD_DIR="build/release"   # LOKAL – nicht in iCloud, sonst codesign „resource fork"-Fehler
-DIST_DIR="build/dist"
+# Build-Verzeichnis MUSS lokal liegen – NICHT im iCloud-Projektordner, sonst
+# scheitert codesign an iCloud-Extended-Attributes („resource fork … not allowed").
+BUILD_ROOT="$HOME/Library/Caches/LogbuchLoaderRelease"
+BUILD_DIR="$BUILD_ROOT/build"
+DIST_DIR="$BUILD_ROOT/dist"
 NOTARY_PROFILE="${NOTARY_PROFILE:-LogbuchNotary}"
 REPO="supapilot/logbuch-loader"
 
