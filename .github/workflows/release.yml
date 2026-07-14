@@ -20,6 +20,10 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Manueller Trockenlauf: baut/signiert/notarisiert vollständig, veröffentlicht
+  # aber NICHTS (der Publish-Schritt läuft nur bei einem Tag-Push). Damit lässt
+  # sich einmalig prüfen, dass die Klarnamen-Maskierung im öffentlichen Log greift.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -86,6 +90,9 @@ jobs:
           echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Release veröffentlichen + Appcast committen
+        # Nur bei Tag-Push veröffentlichen. Ein manueller Trockenlauf
+        # (workflow_dispatch) baut alles, überspringt diesen Schritt aber.
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
