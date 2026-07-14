@@ -134,10 +134,11 @@ GEN_APPCAST="$(find "$HOME/Library/Developer/Xcode/DerivedData"/Logbuch_Loader-*
 python3 scripts/changelog_to_html.py "$VERSION" CHANGELOG.md \
 	> "$DIST_DIR/$(basename "$DMG" .dmg).html"
 # EdDSA-Signierung: lokal aus dem Schlüsselbund; in CI aus $SPARKLE_ED_KEY_FILE.
+# (Array-Expansion bash-3.2-sicher unter `set -u`, auch wenn leer.)
 ED_KEY_ARGS=()
 [ -n "${SPARKLE_ED_KEY_FILE:-}" ] && ED_KEY_ARGS=(--ed-key-file "$SPARKLE_ED_KEY_FILE")
 # Enclosure-URL zeigt auf das Release-Asset des passenden Tags v<version>.
-"$GEN_APPCAST" "${ED_KEY_ARGS[@]}" \
+"$GEN_APPCAST" ${ED_KEY_ARGS[@]+"${ED_KEY_ARGS[@]}"} \
 	--download-url-prefix "https://github.com/$REPO/releases/download/v$VERSION/" \
 	-o docs/appcast.xml "$DIST_DIR"
 echo "▸ docs/appcast.xml aktualisiert."

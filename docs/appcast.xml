@@ -12,6 +12,27 @@
         <description>Software-Updates für Logbuch Loader</description>
         <language>de</language>
         <item>
+            <title>1.3.5</title>
+            <pubDate>Tue, 14 Jul 2026 09:54:03 +0200</pubDate>
+            <sparkle:version>41</sparkle:version>
+            <sparkle:shortVersionString>1.3.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h4>Hinzugefügt</h4>
+<ul>
+<li>Der Update-Dialog zeigt jetzt die <strong>Neuerungen der verfügbaren Version</strong> direkt an (aus dem Changelog eingebettet).</li>
+</ul>
+<h4>Geändert</h4>
+<ul>
+<li>Das „Über&quot;-Fenster wurde entschlackt – die Copyright-Zeile wird nicht mehr doppelt im Text wiederholt.</li>
+</ul>
+<h4>Behoben</h4>
+<ul>
+<li>Die <strong>Update-Dialoge erscheinen jetzt auf Deutsch</strong> (zuvor englisch). Die App ist nun ausdrücklich als deutschsprachig deklariert, sodass Sparkle seine mitgelieferte deutsche Übersetzung nutzt.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/supapilot/logbuch-loader/releases/download/v1.3.5/Logbuch-Loader-1.3.5.dmg" length="4656860" type="application/octet-stream" sparkle:edSignature="K9nweLgsHmSIOFPX6FvJk6Py1+znC+RMTNLXkaisVZsE9n/0upbT8QIFGRirDi/x9gZUiKfKnd9B0kyW0JWpBg=="/>
+        </item>
+        <item>
             <title>1.3.4</title>
             <pubDate>Tue, 14 Jul 2026 09:10:02 +0200</pubDate>
             <sparkle:version>39</sparkle:version>
