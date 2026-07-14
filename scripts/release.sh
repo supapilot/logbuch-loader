@@ -57,7 +57,7 @@ echo "▸ Version $VERSION"
 # ── 2) Sparkle-Komponenten + App mit Developer ID neu signieren ───────────────
 #    Das Sparkle-Binary-Framework kommt ad-hoc-signiert; xcodebuild signiert die
 #    tief verschachtelten Helfer (Updater.app, Autoupdate, XPC-Dienste) NICHT mit
-#    der Developer ID. Daher hier von innen nach außen explizit signieren
+#    der Developer ID. Deshalb hier von innen nach außen explizit signieren
 #    (Hardened Runtime + Secure Timestamp), zuletzt das App-Bundle (das dabei
 #    auch get-task-allow verliert). Kein --deep.
 echo "▸ [2/6] Sparkle-Komponenten + App signieren …"
