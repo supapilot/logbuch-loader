@@ -102,6 +102,11 @@ xcrun stapler staple "$APP"
 # DMG mit der nun gestapelten App neu bauen, damit die herausgezogene App offline startet:
 rm -f "$DMG"; create-dmg "$APP" "$DIST_DIR" >/dev/null
 DMG="$(ls "$DIST_DIR"/*.dmg | head -1)"
+# GitHub ersetzt Leerzeichen in Release-Asset-Namen durch Punkte; daher das DMG
+# ohne Leerzeichen benennen (Bindestriche bleiben erhalten), damit die
+# Appcast-Enclosure-URL exakt zum hochgeladenen Asset passt.
+CLEAN_DMG="$DIST_DIR/$(basename "$DMG" | tr ' ' '-')"
+[ "$DMG" != "$CLEAN_DMG" ] && mv -f "$DMG" "$CLEAN_DMG" && DMG="$CLEAN_DMG"
 xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$DMG"
 spctl -a -vvv -t install "$DMG" || true
