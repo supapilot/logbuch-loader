@@ -41,6 +41,9 @@ Rechtsklick → „Öffnen" ist nicht nötig. Voraussetzung: macOS 14 oder neuer
 - **Composer** – fügt hochgeladene PDFs/ZIPs zu einem einzigen, sauber
   gegliederten Ausbildungsbuch (Deckblatt, Inhaltsverzeichnis mit Sprungzielen,
   Kapitel) im A4-Format zusammen.
+- **Automatische Update-Prüfung** ([Sparkle](https://sparkle-project.org)) –
+  meldet neue Versionen und aktualisiert nach Bestätigung; der Nutzer behält die
+  Kontrolle (kein stilles Auto-Update).
 
 ## Screenshots
 
@@ -73,9 +76,16 @@ Bedarf unter *Signing & Capabilities* das eigene Team auswählen.
 
 Die App läuft in der macOS App Sandbox mit einem minimalen Satz an Rechten:
 
-- **Ausgehende Netzwerkverbindungen** – für Anmeldung und Download.
+- **Ausgehende Netzwerkverbindungen** – für Anmeldung, Download und die
+  Update-Prüfung.
 - **Zugriff auf vom Nutzer gewählte Ordner (Lesen/Schreiben)** – zum Speichern
   der PDFs im selbst gewählten Zielordner.
+- **Sparkle-Installer** – eine dokumentierte
+  [`mach-lookup`-Ausnahme](https://sparkle-project.org/documentation/sandboxing/),
+  damit das Update aus der Sandbox heraus installiert werden kann.
+
+Für [Little Snitch](https://www.obdev.at/products/littlesnitch/) liegt der App
+eine **Internet Access Policy** bei, die alle Verbindungen samt Zweck erklärt.
 
 Zugangsdaten werden ausschließlich lokal im Schlüsselbund gespeichert und nur an
 das BLK Logbuch des Nutzers gesendet. Es werden keine Daten an Dritte

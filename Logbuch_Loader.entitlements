@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Sandbox (zuvor über Build-Settings erzeugt) -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Ausgehende Netzwerkverbindungen (Login/Download, Logo, Sparkle-Appcast) -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Nutzergewählte Dateien lesen/schreiben (Composer-Ablage, Speichern) -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- Sparkle: Zugriff des Sandboxed-App auf die privilegierten Installer-XPC-Dienste.
+	     Dokumentiert unter https://sparkle-project.org/documentation/sandboxing/ -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>supapilot.Logbuch-Loader-spks</string>
+		<string>supapilot.Logbuch-Loader-spki</string>
+	</array>
+</dict>
+</plist>

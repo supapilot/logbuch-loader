@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Sparkle-Appcast für Logbuch Loader.
+	Wird bei jedem Release von scripts/release.sh via `generate_appcast` neu
+	erzeugt und mit dem EdDSA-Schlüssel signiert. Gehostet über GitHub Pages
+	unter https://supapilot.github.io/logbuch-loader/appcast.xml
+-->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+	<channel>
+		<title>Logbuch Loader</title>
+		<link>https://supapilot.github.io/logbuch-loader/appcast.xml</link>
+		<description>Software-Updates für Logbuch Loader</description>
+		<language>de</language>
+	</channel>
+</rss>

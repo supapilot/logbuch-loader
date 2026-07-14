@@ -7,6 +7,17 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+- **Automatische Update-Prüfung** via [Sparkle](https://sparkle-project.org):
+  Die App sucht im Hintergrund nach neuen Versionen und meldet sich mit einem
+  Hinweis, sobald eine verfügbar ist – installieren, später erinnern oder
+  überspringen entscheidet der Nutzer (kein stilles Auto-Update). Beim ersten
+  Start wird einmalig um Erlaubnis für die automatische Prüfung gebeten.
+  Zusätzlich im App-Menü: „Nach Updates suchen…".
+- **Internet Access Policy** (`InternetAccessPolicy.plist`) für Little Snitch:
+  dokumentiert transparent die beiden Netzwerkverbindungen der App (BLK-Logbuch
+  und optionaler Logo-Download) samt Zweck und Folgen einer Blockade.
+
 ## [1.3.2] – 2026-07-09
 
 ### Hinzugefügt

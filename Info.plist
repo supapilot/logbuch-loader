@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+	Teil-Info.plist: enthält nur die Sparkle-Update-Schlüssel. Die übrigen Werte
+	(Version, Copyright, Kategorie, …) erzeugt Xcode via GENERATE_INFOPLIST_FILE
+	und führt sie mit dieser Datei zusammen.
+-->
+<plist version="1.0">
+<dict>
+	<!-- Appcast-Feed (statisch auf GitHub Pages gehostet) -->
+	<key>SUFeedURL</key>
+	<string>https://supapilot.github.io/logbuch-loader/appcast.xml</string>
+	<!-- Öffentlicher EdDSA-Schlüssel; privater Teil liegt im Schlüsselbund -->
+	<key>SUPublicEDKey</key>
+	<string>6s/CbJfEhi9ZDAwdINMNHlCu7N99hIVvo1YQuahnnLA=</string>
+	<!-- Erlaubt dem Sandboxed-App den privilegierten Installer-XPC-Dienst -->
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+</dict>
+</plist>

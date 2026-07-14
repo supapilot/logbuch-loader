@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+	Internet Access Policy für Little Snitch (obdev).
+	Dokumentiert alle Netzwerkverbindungen, die Logbuch Loader aufbaut.
+	Spezifikation: https://help.obdev.at/littlesnitch6/adv-iap-developer
+-->
+<plist version="1.0">
+<dict>
+	<key>DeveloperName</key>
+	<string>Supapilot</string>
+	<key>Website</key>
+	<string>https://github.com/supapilot/logbuch-loader</string>
+	<key>ApplicationDescription</key>
+	<string>Logbuch Loader lädt Ausbildungsfahrten aus dem BLK-Ausbildungslogbuch (logbuch.lotsen.de) als PDF herunter und stellt daraus ein vollständiges Ausbildungsbuch zusammen. Alle Daten bleiben lokal auf dem Mac – es gibt keine Telemetrie, keine Werbung und keine Weitergabe an Dritte.</string>
+	<key>Connections</key>
+	<array>
+		<dict>
+			<key>Host</key>
+			<string>logbuch.lotsen.de</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Relevance</key>
+			<string>Essential</string>
+			<key>Purpose</key>
+			<string>Anmeldung am BLK-Ausbildungslogbuch sowie Abruf der Profil- und Fahrtenliste und Download der Ausbildungsfahrten als PDF.</string>
+			<key>DenyConsequences</key>
+			<string>Ohne diese Verbindung kann sich die App nicht anmelden und keine Ausbildungsfahrten herunterladen – die Kernfunktion ist dann nicht nutzbar.</string>
+		</dict>
+		<dict>
+			<key>Host</key>
+			<string>www.bundeslotsenkammer.de</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Relevance</key>
+			<string>Default</string>
+			<key>Purpose</key>
+			<string>Optionaler Download des Logos der gewählten Lotsenbrüderschaft für das Deckblatt des Ausbildungsbuchs.</string>
+			<key>DenyConsequences</key>
+			<string>Das Ausbildungsbuch wird weiterhin erstellt – jedoch ohne das Logo der Lotsenbrüderschaft auf dem Deckblatt.</string>
+		</dict>
+	</array>
+</dict>
+</plist>

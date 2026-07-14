@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct Logbuch_LoaderApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var updater = UpdaterViewModel()
 
     var body: some Scene {
         WindowGroup {
@@ -35,6 +36,8 @@ struct Logbuch_LoaderApp: App {
             // klickbarem Link zum Quellcode.
             CommandGroup(replacing: .appInfo) {
                 Button("Über Logbuch Loader") { showAboutPanel() }
+                Divider()
+                CheckForUpdatesView(updater: updater)
             }
         }
     }
