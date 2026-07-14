@@ -353,7 +353,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.3.4;
 				OTHER_CODE_SIGN_FLAGS = "--runtime-version 14.0";
 				PRODUCT_BUNDLE_IDENTIFIER = "supapilot.Logbuch-Loader";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -389,7 +389,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.3.4;
 				OTHER_CODE_SIGN_FLAGS = "--runtime-version 14.0";
 				PRODUCT_BUNDLE_IDENTIFIER = "supapilot.Logbuch-Loader";
 				PRODUCT_NAME = "$(TARGET_NAME)";

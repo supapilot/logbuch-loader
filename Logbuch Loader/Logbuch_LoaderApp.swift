@@ -65,6 +65,9 @@ struct Logbuch_LoaderApp: App {
         let credits = NSMutableAttributedString(
             string: "Open Source unter der Apache-Lizenz 2.0.\nEntwickelt von Supapilot.\n\n",
             attributes: base)
+        credits.append(NSAttributedString(string: "Automatische Update-Prüfung mit ", attributes: base))
+        credits.append(link("Sparkle", "https://sparkle-project.org"))
+        credits.append(NSAttributedString(string: " (MIT-Lizenz).\n\n", attributes: base))
         credits.append(link("Quellcode auf GitHub", "https://github.com/supapilot/logbuch-loader"))
         credits.append(newline)
         credits.append(link("www.supapilot.dev", "https://www.supapilot.dev"))

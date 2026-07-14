@@ -43,6 +43,48 @@
 			<key>DenyConsequences</key>
 			<string>Das Ausbildungsbuch wird weiterhin erstellt – jedoch ohne das Logo der Lotsenbrüderschaft auf dem Deckblatt.</string>
 		</dict>
+		<dict>
+			<key>Host</key>
+			<string>supapilot.github.io</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Relevance</key>
+			<string>Default</string>
+			<key>Purpose</key>
+			<string>Prüfung auf neue App-Versionen über den Sparkle-Appcast (GitHub Pages).</string>
+			<key>DenyConsequences</key>
+			<string>Die App funktioniert weiterhin vollständig, prüft aber nicht mehr selbst auf Updates – neue Versionen müssen dann manuell installiert werden.</string>
+		</dict>
+		<dict>
+			<key>Host</key>
+			<string>github.com</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Relevance</key>
+			<string>Default</string>
+			<key>Purpose</key>
+			<string>Herunterladen des Update-Pakets (DMG) einer neuen App-Version aus den GitHub-Releases.</string>
+			<key>DenyConsequences</key>
+			<string>Ein gefundenes Update kann nicht heruntergeladen werden; die App läuft in der aktuellen Version unverändert weiter.</string>
+		</dict>
+		<dict>
+			<key>Host</key>
+			<string>objects.githubusercontent.com</string>
+			<key>NetworkProtocol</key>
+			<string>TCP</string>
+			<key>Port</key>
+			<string>443</string>
+			<key>Relevance</key>
+			<string>Default</string>
+			<key>Purpose</key>
+			<string>Auslieferung des Update-Pakets über das Content-Netzwerk von GitHub (Ziel des Release-Downloads).</string>
+			<key>DenyConsequences</key>
+			<string>Ein gefundenes Update kann nicht heruntergeladen werden; die App läuft in der aktuellen Version unverändert weiter.</string>
+		</dict>
 	</array>
 </dict>
 </plist>

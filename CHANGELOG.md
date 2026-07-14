@@ -7,6 +7,17 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.4] – 2026-07-14
+
+### Hinzugefügt
+- Das „Über"-Fenster nennt jetzt die mitgelieferte Update-Komponente
+  **Sparkle (MIT-Lizenz)** samt Link zum Projekt.
+
+### Geändert
+- Die **Internet Access Policy** dokumentiert nun auch die drei
+  Verbindungen der Update-Prüfung (`supapilot.github.io`, `github.com`,
+  `objects.githubusercontent.com`) – transparent für Little Snitch.
+
 ## [1.3.3] – 2026-07-14
 
 ### Hinzugefügt
@@ -126,7 +137,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.3...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.4...HEAD
+[1.3.4]: https://github.com/supapilot/logbuch-loader/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/supapilot/logbuch-loader/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/supapilot/logbuch-loader/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/supapilot/logbuch-loader/compare/v1.3.0...v1.3.1
