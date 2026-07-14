@@ -12,6 +12,14 @@
         <description>Software-Updates für Logbuch Loader</description>
         <language>de</language>
         <item>
+            <title>1.3.4</title>
+            <pubDate>Tue, 14 Jul 2026 09:10:02 +0200</pubDate>
+            <sparkle:version>39</sparkle:version>
+            <sparkle:shortVersionString>1.3.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/supapilot/logbuch-loader/releases/download/v1.3.4/Logbuch-Loader-1.3.4.dmg" length="4657479" type="application/octet-stream" sparkle:edSignature="vy3tuIKNg599WEPwt2Rj6tbiERaQw/BuDq97Ic6/xOkVsCdVfaLTJqMj/ZfGR7WW2yuSVaCALVUY4GC6HrdOCA=="/>
+        </item>
+        <item>
             <title>1.3.3</title>
             <pubDate>Tue, 14 Jul 2026 08:42:11 +0200</pubDate>
             <sparkle:version>1</sparkle:version>
