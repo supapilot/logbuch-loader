@@ -40,13 +40,17 @@ TEAM_ID="$(sed -n 's/.*(\([A-Z0-9]\{10\}\))$/\1/p' <<<"$SIGN_IDENTITY")"
 echo "▸ Signieridentität: $SIGN_IDENTITY  (Team $TEAM_ID)"
 
 # ── 1) Release bauen (Developer ID, Hardened Runtime, Runtime-Pin 14.0) ───────
-echo "▸ [1/6] Release bauen …"
+# Build-Nummer (CFBundleVersion) aus dem Commit-Count – MUSS je Release steigen,
+# da Sparkle Updates anhand von sparkle:version (= CFBundleVersion) erkennt.
+BUILD_NUMBER="$(git rev-list --count HEAD)"
+echo "▸ [1/6] Release bauen … (Build-Nummer $BUILD_NUMBER)"
 rm -rf "$BUILD_DIR"
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
 	-project "$PROJECT" -scheme "$SCHEME" -configuration Release \
 	-derivedDataPath "$BUILD_DIR" \
 	CODE_SIGN_IDENTITY="Developer ID Application" CODE_SIGN_STYLE=Manual \
 	DEVELOPMENT_TEAM="$TEAM_ID" ENABLE_HARDENED_RUNTIME=YES \
+	CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
 	OTHER_CODE_SIGN_FLAGS="--timestamp --runtime-version 14.0" \
 	clean build
 
