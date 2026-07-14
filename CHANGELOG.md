@@ -7,6 +7,21 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.5] – 2026-07-14
+
+### Hinzugefügt
+- Der Update-Dialog zeigt jetzt die **Neuerungen der verfügbaren Version**
+  direkt an (aus dem Changelog eingebettet).
+
+### Geändert
+- Das „Über"-Fenster wurde entschlackt – die Copyright-Zeile wird nicht mehr
+  doppelt im Text wiederholt.
+
+### Behoben
+- Die **Update-Dialoge erscheinen jetzt auf Deutsch** (zuvor englisch). Die App
+  ist nun ausdrücklich als deutschsprachig deklariert, sodass Sparkle seine
+  mitgelieferte deutsche Übersetzung nutzt.
+
 ## [1.3.4] – 2026-07-14
 
 ### Hinzugefügt
@@ -137,7 +152,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.4...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.5...HEAD
+[1.3.5]: https://github.com/supapilot/logbuch-loader/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/supapilot/logbuch-loader/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/supapilot/logbuch-loader/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/supapilot/logbuch-loader/compare/v1.3.1...v1.3.2

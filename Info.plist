@@ -7,6 +7,16 @@
 -->
 <plist version="1.0">
 <dict>
+	<!-- App ist durchgängig deutsch. Ohne diese Deklaration löst macOS die
+	     App-Sprache auf die Entwicklungsregion (en) auf, wodurch auch Sparkles
+	     Update-Dialoge englisch erscheinen. Mit „de“ als einziger Lokalisierung
+	     nutzt Sparkle sein mitgeliefertes de.lproj → alle Update-Fenster deutsch. -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>de</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>de</string>
+	</array>
 	<!-- Appcast-Feed (statisch auf GitHub Pages gehostet) -->
 	<key>SUFeedURL</key>
 	<string>https://supapilot.github.io/logbuch-loader/appcast.xml</string>

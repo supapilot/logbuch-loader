@@ -39,6 +39,20 @@ SIGN_IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning \
 TEAM_ID="$(sed -n 's/.*(\([A-Z0-9]\{10\}\))$/\1/p' <<<"$SIGN_IDENTITY")"
 echo "▸ Signieridentität: $SIGN_IDENTITY  (Team $TEAM_ID)"
 
+# ── Notarisierung: lokal via Keychain-Profil, in CI via App-Store-Connect-API-Key ─
+# Setzt NOTARY_KEY (Pfad zur .p8), NOTARY_KEY_ID und NOTARY_ISSUER, so wird der
+# API-Key genutzt; sonst das Keychain-Profil ($NOTARY_PROFILE).
+notarize() {  # $1 = einzureichende Datei
+	if [ -n "${NOTARY_KEY:-}" ]; then
+		[ -n "${NOTARY_KEY_ID:-}" ] && [ -n "${NOTARY_ISSUER:-}" ] \
+			|| { echo "❌ NOTARY_KEY gesetzt, aber NOTARY_KEY_ID/NOTARY_ISSUER fehlen."; exit 1; }
+		xcrun notarytool submit "$1" --key "$NOTARY_KEY" \
+			--key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER" --wait
+	else
+		xcrun notarytool submit "$1" --keychain-profile "$NOTARY_PROFILE" --wait
+	fi
+}
+
 # ── 1) Release bauen (Developer ID, Hardened Runtime, Runtime-Pin 14.0) ───────
 # Build-Nummer (CFBundleVersion) aus dem Commit-Count – MUSS je Release steigen,
 # da Sparkle Updates anhand von sparkle:version (= CFBundleVersion) erkennt.
@@ -97,7 +111,7 @@ echo "▸ $DMG"
 echo "▸ [4/6] Notarisieren (kann einige Minuten dauern) …"
 # Falls --wait in ein Netzwerk-Timeout läuft: Einreichung ist trotzdem erfolgt –
 # Status separat mit `xcrun notarytool info <id> --keychain-profile $NOTARY_PROFILE` pollen.
-xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+notarize "$DMG"
 xcrun stapler staple "$APP"
 # DMG mit der nun gestapelten App neu bauen, damit die herausgezogene App offline startet:
 rm -f "$DMG"; create-dmg "$APP" "$DIST_DIR" >/dev/null
@@ -107,7 +121,7 @@ DMG="$(ls "$DIST_DIR"/*.dmg | head -1)"
 # Appcast-Enclosure-URL exakt zum hochgeladenen Asset passt.
 CLEAN_DMG="$DIST_DIR/$(basename "$DMG" | tr ' ' '-')"
 [ "$DMG" != "$CLEAN_DMG" ] && mv -f "$DMG" "$CLEAN_DMG" && DMG="$CLEAN_DMG"
-xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+notarize "$DMG"
 xcrun stapler staple "$DMG"
 spctl -a -vvv -t install "$DMG" || true
 
@@ -115,8 +129,15 @@ spctl -a -vvv -t install "$DMG" || true
 echo "▸ [5/6] Appcast erzeugen + signieren …"
 GEN_APPCAST="$(find "$HOME/Library/Developer/Xcode/DerivedData"/Logbuch_Loader-*/SourcePackages/artifacts/sparkle/Sparkle/bin -name generate_appcast 2>/dev/null | head -1)"
 [ -n "$GEN_APPCAST" ] || { echo "❌ generate_appcast nicht gefunden (SPM-Artefakte fehlen)."; exit 1; }
+# Release-Notes als HTML-Fragment neben das DMG legen (gleicher Basisname) –
+# generate_appcast bettet es als CDATA-<description> ein, Sparkle zeigt es an.
+python3 scripts/changelog_to_html.py "$VERSION" CHANGELOG.md \
+	> "$DIST_DIR/$(basename "$DMG" .dmg).html"
+# EdDSA-Signierung: lokal aus dem Schlüsselbund; in CI aus $SPARKLE_ED_KEY_FILE.
+ED_KEY_ARGS=()
+[ -n "${SPARKLE_ED_KEY_FILE:-}" ] && ED_KEY_ARGS=(--ed-key-file "$SPARKLE_ED_KEY_FILE")
 # Enclosure-URL zeigt auf das Release-Asset des passenden Tags v<version>.
-"$GEN_APPCAST" \
+"$GEN_APPCAST" "${ED_KEY_ARGS[@]}" \
 	--download-url-prefix "https://github.com/$REPO/releases/download/v$VERSION/" \
 	-o docs/appcast.xml "$DIST_DIR"
 echo "▸ docs/appcast.xml aktualisiert."
@@ -132,7 +153,7 @@ Nächste Schritte (selbst ausführen):
        git add docs/appcast.xml && git commit -m "Appcast v$VERSION" && git push
 
   2) GitHub-Release mit dem DMG anlegen (Tag MUSS v$VERSION heißen):
-       gh release create "v$VERSION" "$DMG" --title "v$VERSION" --notes-file <(sed -n '/## \\[$VERSION\\]/,/## \\[/p' CHANGELOG.md) --latest
+       gh release create "v$VERSION" "$DMG" --title "v$VERSION" --notes-file <(python3 scripts/changelog_to_html.py "$VERSION" CHANGELOG.md --raw) --latest
 
   3) Prüfen: https://supapilot.github.io/logbuch-loader/appcast.xml erreichbar,
      Enclosure-URL zeigt auf …/releases/download/v$VERSION/$DMG_BASENAME

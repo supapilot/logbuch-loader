@@ -62,8 +62,11 @@ struct Logbuch_LoaderApp: App {
         }
         let newline = NSAttributedString(string: "\n", attributes: base)
 
+        // Name/Version/Copyright ("© 2026 Supapilot • Apache-2.0") füllt macOS
+        // selbst aus der Info.plist; hier nur Kurzbeschreibung, Update-Hinweis
+        // und Links – ohne die Copyright-Zeile zu wiederholen.
         let credits = NSMutableAttributedString(
-            string: "Open Source unter der Apache-Lizenz 2.0.\nEntwickelt von Supapilot.\n\n",
+            string: "Hilfswerkzeug für die Seelotsenausbildung.\n",
             attributes: base)
         credits.append(NSAttributedString(string: "Automatische Update-Prüfung mit ", attributes: base))
         credits.append(link("Sparkle", "https://sparkle-project.org"))
