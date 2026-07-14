@@ -7,6 +7,8 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.3] – 2026-07-14
+
 ### Hinzugefügt
 - **Automatische Update-Prüfung** via [Sparkle](https://sparkle-project.org):
   Die App sucht im Hintergrund nach neuen Versionen und meldet sich mit einem
@@ -120,7 +122,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.2...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.3...HEAD
+[1.3.3]: https://github.com/supapilot/logbuch-loader/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/supapilot/logbuch-loader/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/supapilot/logbuch-loader/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/supapilot/logbuch-loader/compare/v1.2.1...v1.3.0
