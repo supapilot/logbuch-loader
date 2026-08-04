@@ -12,6 +12,23 @@
         <description>Software-Updates für Logbuch Loader</description>
         <language>de</language>
         <item>
+            <title>1.3.6</title>
+            <pubDate>Tue, 04 Aug 2026 22:04:12 +0200</pubDate>
+            <sparkle:version>44</sparkle:version>
+            <sparkle:shortVersionString>1.3.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h4>Hinzugefügt</h4>
+<ul>
+<li><strong>Ausbildungsverlauf aus Tabelle:</strong> Das Feld „Ausbildungsverlauf&quot; nimmt jetzt neben einem PDF auch die <strong>XLSX-Masterliste</strong> an und erzeugt daraus – nach kurzer Bestätigung des Namens – automatisch den persönlichen Ausbildungsverlauf als zweiseitiges Querformat-PDF. Der Name wird dabei tolerant abgeglichen (fehlende Namensteile, Leerzeichen oder Tippfehler werden verkraftet); bei Unklarheit wird nachgefragt.</li>
+</ul>
+<h4>Behoben</h4>
+<ul>
+<li>Seitenzahlen auf <strong>Querformat-Seiten</strong> werden nun korrekt mitgedreht und sitzen in der Leseansicht unten rechts.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/supapilot/logbuch-loader/releases/download/v1.3.6/Logbuch-Loader-1.3.6.dmg" length="4815929" type="application/octet-stream" sparkle:edSignature="Ao8SBbqncabDSSklM4EQzcJRsWSpdYA8GEYT3vckTT3jNzoyvuznhFbMaWuQ7qTY46qB9bOHJ+4MQprnbd7IAg=="/>
+        </item>
+        <item>
             <title>1.3.5</title>
             <pubDate>Tue, 14 Jul 2026 09:54:03 +0200</pubDate>
             <sparkle:version>41</sparkle:version>
@@ -39,14 +56,6 @@
             <sparkle:shortVersionString>1.3.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/supapilot/logbuch-loader/releases/download/v1.3.4/Logbuch-Loader-1.3.4.dmg" length="4657479" type="application/octet-stream" sparkle:edSignature="vy3tuIKNg599WEPwt2Rj6tbiERaQw/BuDq97Ic6/xOkVsCdVfaLTJqMj/ZfGR7WW2yuSVaCALVUY4GC6HrdOCA=="/>
-        </item>
-        <item>
-            <title>1.3.3</title>
-            <pubDate>Tue, 14 Jul 2026 08:42:11 +0200</pubDate>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.3.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/supapilot/logbuch-loader/releases/download/v1.3.3/Logbuch.Loader.1.3.3.dmg" length="4656634" type="application/octet-stream" sparkle:edSignature="BcZ9hEXSpgVlTob1fTVji/Dc4GOtrgJreD1zV7AfHRsWVuPvBrvTrgtZNBqR2GMM5GQ6ZiM1rLa0dlQ2EJXvCA=="/>
         </item>
     </channel>
 </rss>
