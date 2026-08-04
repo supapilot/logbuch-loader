@@ -71,21 +71,8 @@ enum ZipExtractor {
             guard uncompSize <= maxEntryBytes, compSize <= maxEntryBytes else { continue }
             if totalBytes + uncompSize > maxTotalBytes { break }
 
-            // Datenoffset aus dem lokalen Header.
-            guard localOffset + 30 <= data.count, readU32(data, localOffset) == 0x04034b50 else { continue }
-            let lfFnLen = readU16(data, localOffset + 26)
-            let lfExtraLen = readU16(data, localOffset + 28)
-            let start = localOffset + 30 + lfFnLen + lfExtraLen
-            guard start + compSize <= data.count else { continue }
-            let comp = slice(data, start, start + compSize)
-
-            let pdf: Data?
-            switch method {
-            case 0: pdf = comp                                  // STORE
-            case 8: pdf = inflate(comp, expected: uncompSize)   // DEFLATE
-            default: pdf = nil
-            }
-            guard let pdfData = pdf else { continue }
+            guard let pdfData = rawEntryData(data, method: method, localOffset: localOffset,
+                                             compSize: compSize, uncompSize: uncompSize) else { continue }
 
             var base = (name as NSString).lastPathComponent
             if base.isEmpty { base = "datei_\(index).pdf" }
@@ -102,7 +89,55 @@ enum ZipExtractor {
         return result
     }
 
+    /// Liest ausgewählte Einträge (Name via `matches` gefiltert) als entpackte
+    /// Rohdaten in den Speicher – für den XLSX-Reader (XLSX = ZIP aus XML-Teilen).
+    static func readEntries(from data: Data, where matches: (String) -> Bool) -> [String: Data] {
+        guard let eocd = findEOCD(data) else { return [:] }
+        let entryCount = readU16(data, eocd + 10)
+        let cdOffset = Int(readU32(data, eocd + 16))
+
+        var out: [String: Data] = [:]
+        var p = cdOffset
+        for _ in 0..<entryCount {
+            guard p + 46 <= data.count, readU32(data, p) == 0x02014b50 else { break }
+            let method = readU16(data, p + 10)
+            let compSize = Int(readU32(data, p + 20))
+            let uncompSize = Int(readU32(data, p + 24))
+            let fnLen = readU16(data, p + 28)
+            let extraLen = readU16(data, p + 30)
+            let commentLen = readU16(data, p + 32)
+            let localOffset = Int(readU32(data, p + 42))
+            let nameEnd = p + 46 + fnLen
+            guard nameEnd <= data.count else { break }
+            let name = String(data: slice(data, p + 46, nameEnd), encoding: .utf8) ?? ""
+            p = nameEnd + extraLen + commentLen
+            guard matches(name), uncompSize <= maxEntryBytes, compSize <= maxEntryBytes,
+                  compSize != 0xFFFFFFFF, uncompSize != 0xFFFFFFFF, localOffset != 0xFFFFFFFF else { continue }
+            if let d = rawEntryData(data, method: method, localOffset: localOffset,
+                                    compSize: compSize, uncompSize: uncompSize) {
+                out[name] = d
+            }
+        }
+        return out
+    }
+
     // MARK: - ZIP-Parsing
+
+    /// Entpackt die Rohdaten eines Eintrags über seinen lokalen Header (STORE/DEFLATE).
+    private static func rawEntryData(_ data: Data, method: Int, localOffset: Int,
+                                     compSize: Int, uncompSize: Int) -> Data? {
+        guard localOffset + 30 <= data.count, readU32(data, localOffset) == 0x04034b50 else { return nil }
+        let lfFnLen = readU16(data, localOffset + 26)
+        let lfExtraLen = readU16(data, localOffset + 28)
+        let start = localOffset + 30 + lfFnLen + lfExtraLen
+        guard start + compSize <= data.count else { return nil }
+        let comp = slice(data, start, start + compSize)
+        switch method {
+        case 0:  return comp                                 // STORE
+        case 8:  return inflate(comp, expected: uncompSize)  // DEFLATE
+        default: return nil
+        }
+    }
 
     private static func findEOCD(_ d: Data) -> Int? {
         let signature: UInt32 = 0x06054b50

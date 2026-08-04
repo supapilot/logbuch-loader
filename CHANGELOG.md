@@ -7,6 +7,20 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.6] – 2026-08-04
+
+### Hinzugefügt
+- **Ausbildungsverlauf aus Tabelle:** Das Feld „Ausbildungsverlauf" nimmt jetzt
+  neben einem PDF auch die **XLSX-Masterliste** an und erzeugt daraus – nach
+  kurzer Bestätigung des Namens – automatisch den persönlichen Ausbildungsverlauf
+  als zweiseitiges Querformat-PDF. Der Name wird dabei tolerant abgeglichen
+  (fehlende Namensteile, Leerzeichen oder Tippfehler werden verkraftet); bei
+  Unklarheit wird nachgefragt.
+
+### Behoben
+- Seitenzahlen auf **Querformat-Seiten** werden nun korrekt mitgedreht und sitzen
+  in der Leseansicht unten rechts.
+
 ## [1.3.5] – 2026-07-14
 
 ### Hinzugefügt
@@ -152,7 +166,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.5...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.6...HEAD
+[1.3.6]: https://github.com/supapilot/logbuch-loader/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/supapilot/logbuch-loader/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/supapilot/logbuch-loader/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/supapilot/logbuch-loader/compare/v1.3.2...v1.3.3

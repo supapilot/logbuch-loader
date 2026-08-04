@@ -12,6 +12,7 @@ import Foundation
 import AppKit
 import PDFKit
 import CoreGraphics
+import CoreText
 
 enum LogbookComposer {
     /// A4-Hochformat in Punkten (72 dpi): 210 × 297 mm.
@@ -512,20 +513,40 @@ enum LogbookComposer {
         ctx.clip(to: box)
         ctx.drawPDFPage(page)
         ctx.restoreGState()
-        drawPageNumber(ctx, pageNumber)
+        drawPageNumber(ctx, pageNumber, landscape: isLandscape)
         ctx.endPDFPage()
     }
 
-    /// Seitenzahl unten rechts – im Stil der Deckblatt-Fußzeile (gedämpftes
-    /// Dunkelgrau, mittlere Schrift), nah an die untere rechte Ecke gesetzt.
-    private static func drawPageNumber(_ ctx: CGContext, _ number: Int) {
-        withAppKit(ctx) {
-            let s = NSAttributedString(string: "\(number)", attributes: [
-                .font: NSFont.systemFont(ofSize: 11, weight: .medium),
-                .foregroundColor: ink,
-            ])
-            let size = s.size()
-            s.draw(at: CGPoint(x: W - 34 - size.width, y: H - 32))
+    private static let pageNumberAttrs: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+        .foregroundColor: ink,
+    ]
+
+    /// Seitenzahl im gedämpften Fußzeilen-Stil. Hochformat: unten rechts auf dem
+    /// Blatt. Querformat (Inhalt ist um 90° gegen den Uhrzeigersinn gedreht
+    /// eingebettet): die Zahl **ebenso um 90° gegen den Uhrzeigersinn gedreht**,
+    /// sodass sie zur Textausrichtung der Seite passt, in der unteren rechten Ecke
+    /// der Querformat-Ansicht – physisch die obere rechte Ecke des Hochformat-Blatts.
+    private static func drawPageNumber(_ ctx: CGContext, _ number: Int, landscape: Bool) {
+        let s = NSAttributedString(string: "\(number)", attributes: pageNumberAttrs)
+        guard landscape else {
+            withAppKit(ctx) {
+                s.draw(at: CGPoint(x: W - 34 - s.size().width, y: H - 32))
+            }
+            return
         }
+        let line = CTLineCreateWithAttributedString(s)
+        let w = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+        ctx.saveGState()
+        ctx.translateBy(x: W - 26, y: H - 34 - w)   // obere rechte Ecke; Text läuft nach oben
+        ctx.rotate(by: .pi / 2)                     // +90° gegen den Uhrzeigersinn
+        // Text-Matrix zurücksetzen: die vorherige Seite (z. B. das per AppKit in
+        // gespiegeltem Kontext gezeichnete Kapitel-Deckblatt) hinterlässt eine
+        // gespiegelte Text-Matrix, die von saveGState/restoreGState NICHT erfasst
+        // wird. Ohne dies würde die erste Querformat-Seite entgegengesetzt gedreht.
+        ctx.textMatrix = .identity
+        ctx.textPosition = .zero
+        CTLineDraw(line, ctx)
+        ctx.restoreGState()
     }
 }

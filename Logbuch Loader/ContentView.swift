@@ -44,7 +44,7 @@ enum StandardChapter: String, CaseIterable, Identifiable {
 
     var info: String {
         switch self {
-        case .ausbildungsverlauf: return "Füge hier das kalendarische Protokoll der Ausbildung ein."
+        case .ausbildungsverlauf: return "Füge hier den Ausbildungsverlauf als PDF ein – oder die XLSX-Masterliste; daraus wird nach kurzer Bestätigung automatisch dein persönlicher Verlauf erzeugt."
         case .ausbildungsplan:    return "Füge hier den Ausbildungsplan ein."
         case .ausbildungsstand:   return "Füge hier den Ausbildungsstand ein. Wird automatisch übernommen, wenn du im Downloader „Logbuch laden“ nutzt."
         case .tagesnotizen:       return "Füge hier die Tagesnotizen der Theorieausbildung ein."
@@ -216,8 +216,9 @@ final class LoginViewModel {
     init() {
         // Beim App-Start keine übrig gebliebenen Import-Dateien aus einer
         // früheren Sitzung (die Composer-Felder sind per Vorgabe leer).
-        try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory
-            .appendingPathComponent("ComposerImport", isDirectory: true))
+        let tmp = FileManager.default.temporaryDirectory
+        try? FileManager.default.removeItem(at: tmp.appendingPathComponent("ComposerImport", isDirectory: true))
+        try? FileManager.default.removeItem(at: tmp.appendingPathComponent("AusbildungsverlaufImport", isDirectory: true))
     }
 
     var downloadHeadline: String {
@@ -701,6 +702,23 @@ struct ComposerView: View {
     @State private var showAddChapter = false
     @State private var chapterNameDraft = ""
 
+    /// Bestätigungsdialog für eine ins Ausbildungsverlauf-Feld gelegte XLSX
+    /// (Namensabgleich bestätigen, bevor gefiltert und gerendert wird).
+    @State private var xlsxPrompt: XLSXPrompt?
+    /// Im Dialog gewählter Zielname (Anwärter).
+    @State private var xlsxChosenName = ""
+    /// Fehlermeldung bei der XLSX-Verarbeitung.
+    @State private var xlsxError: String?
+
+    /// Angaben für den XLSX-Bestätigungsdialog.
+    struct XLSXPrompt: Identifiable {
+        let id = UUID()
+        let sourceURL: URL
+        let fieldID: UUID
+        let candidates: [String]
+        let confident: Bool
+    }
+
     /// Höchstzahl zusätzlicher, benutzerdefinierter Kapitel (eine weitere
     /// Rasterzeile mit drei Feldern).
     private let maxCustomChapters = 3
@@ -861,6 +879,55 @@ struct ComposerView: View {
         .groupBoxStyle(SectionGroupBoxStyle())
         .frame(maxWidth: 720)
         .padding(.top, 4)
+        .sheet(item: $xlsxPrompt) { prompt in
+            XLSXMatchSheet(profileName: user?.name ?? "",
+                           candidates: prompt.candidates,
+                           confident: prompt.confident,
+                           chosen: $xlsxChosenName,
+                           onCancel: { xlsxPrompt = nil },
+                           onConfirm: { applyXLSX(prompt) })
+        }
+        .alert("Ausbildungsverlauf", isPresented: Binding(
+            get: { xlsxError != nil },
+            set: { if !$0 { xlsxError = nil } })) {
+            Button("OK", role: .cancel) { xlsxError = nil }
+        } message: { Text(xlsxError ?? "") }
+    }
+
+    // MARK: - XLSX-Verarbeitung (Ausbildungsverlauf)
+
+    /// Liest die Kandidatennamen aus der XLSX, ermittelt den besten Treffer zum
+    /// Profilnamen und öffnet den Bestätigungsdialog (Sicherheitsnetz vor dem
+    /// Filtern/Rendern).
+    private func handleXLSX(_ url: URL, fieldID: UUID) {
+        do {
+            let candidates = try AusbildungsverlaufBuilder.candidateNames(inXLSX: url)
+            let match = AusbildungsverlaufBuilder.bestMatch(profile: user?.name ?? "", candidates: candidates)
+            xlsxChosenName = match?.name ?? candidates.first ?? ""
+            let confident = match.map { AusbildungsverlaufBuilder.isConfident(score: $0.score, margin: $0.margin) } ?? false
+            xlsxPrompt = XLSXPrompt(sourceURL: url, fieldID: fieldID, candidates: candidates, confident: confident)
+        } catch {
+            xlsxError = "Die XLSX-Datei konnte nicht gelesen werden."
+        }
+    }
+
+    /// Erzeugt das gefilterte Ausbildungsverlauf-PDF für den gewählten Namen und
+    /// legt es als einzige Datei ins Feld.
+    private func applyXLSX(_ prompt: XLSXPrompt) {
+        defer { xlsxPrompt = nil }
+        let name = xlsxChosenName
+        guard !name.isEmpty else { return }
+        // Eigenes Verzeichnis (nicht „ComposerImport", das „Logbuch laden" leert).
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AusbildungsverlaufImport", isDirectory: true)
+        do {
+            let pdf = try AusbildungsverlaufBuilder.buildPDF(fromXLSX: prompt.sourceURL, targetName: name, into: dir)
+            if let i = model.chapterFields.firstIndex(where: { $0.id == prompt.fieldID }) {
+                model.chapterFields[i].urls = [pdf]
+            }
+        } catch {
+            xlsxError = "Der Ausbildungsverlauf konnte nicht erzeugt werden."
+        }
     }
 
     /// Ein Feld im Raster. Während es gezogen wird, bleibt an seiner Stelle ein
@@ -870,11 +937,14 @@ struct ComposerView: View {
     private func fieldCell(_ field: Binding<ChapterField>) -> some View {
         let f = field.wrappedValue
         let isDragging = draggingID == f.id
+        let isVerlauf = f.standardChapter == .ausbildungsverlauf
         DropField(title: f.title,
                   info: f.info,
                   urls: field.urls,
-                  onRemove: f.isCustom ? { removeChapter(f.id) } : nil)
-            // Rasterplatz messen (die Zellen selbst werden nie verschoben, daher
+                  onRemove: f.isCustom ? { removeChapter(f.id) } : nil,
+                  acceptedExtensions: isVerlauf ? ["pdf", "xlsx"] : ["pdf", "zip"],
+                  onXLSX: isVerlauf ? { handleXLSX($0, fieldID: f.id) } : nil)
+            // Rasterplatz messen (die Zellen selbst werden nie verschoben, deshalb
             // ist der Rahmen stabil und für die Zielbestimmung verlässlich).
             .background(GeometryReader { geo in
                 Color.clear
@@ -1067,6 +1137,61 @@ struct AddChapterSheet: View {
     }
 }
 
+/// Bestätigt den Namensabgleich, bevor eine XLSX-Masterliste zum
+/// Ausbildungsverlauf gefiltert wird. Der beste Treffer ist vorgewählt; bei
+/// uneindeutigem Treffer weist ein Hinweis auf die manuelle Auswahl hin.
+struct XLSXMatchSheet: View {
+    let profileName: String
+    let candidates: [String]
+    let confident: Bool
+    @Binding var chosen: String
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Ausbildungsverlauf aus Tabelle")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            Text("Aus der Tabelle wird der Verlauf des gewählten Anwärters übernommen; alle übrigen Einträge werden entfernt.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !profileName.isEmpty {
+                Text("Profil: \(profileName)")
+                    .font(.subheadline)
+            }
+
+            Picker("Anwärter", selection: $chosen) {
+                ForEach(candidates, id: \.self) { Text($0).tag($0) }
+            }
+            .pickerStyle(.menu)
+
+            if !confident {
+                Label("Kein eindeutiger Treffer – bitte den richtigen Namen wählen.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack {
+                Button("Abbrechen", role: .cancel, action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Übernehmen", action: onConfirm)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(chosen.isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+    }
+}
+
 /// Ein einzelnes Drag-&-Drop-Feld mit Überschrift. Nimmt PDF-/ZIP-Dateien
 /// **oder ganze Ordner** per Finder-Drop bzw. per Klick (Datei-Dialog) an –
 /// Ordner werden dabei nach passenden Dateien durchsucht – und zeigt sie als
@@ -1082,6 +1207,11 @@ struct DropField: View {
     @Binding var urls: [URL]
     /// Nur für benutzerdefinierte Kapitel gesetzt: entfernt das ganze Feld.
     var onRemove: (() -> Void)? = nil
+    /// Akzeptierte Dateiendungen für dieses Feld (Standard: PDF + ZIP).
+    var acceptedExtensions: Set<String> = ["pdf", "zip"]
+    /// Optionaler Sonderpfad für XLSX-Dateien: statt die Datei direkt als URL zu
+    /// übernehmen, wird sie hier zur Weiterverarbeitung übergeben.
+    var onXLSX: ((URL) -> Void)? = nil
     @State private var isTargeted = false
     @State private var isHovering = false
 
@@ -1148,11 +1278,8 @@ struct DropField: View {
             } isTargeted: { isTargeted = $0 }
     }
 
-    /// Akzeptierte Dateiendungen für dieses Feld.
-    private static let acceptedExtensions: Set<String> = ["pdf", "zip"]
-
     /// Löst gezogene/ausgewählte URLs in eine flache Liste passender Dateien
-    /// auf: Ordner werden rekursiv nach PDF-/ZIP-Dateien durchsucht (in
+    /// auf: Ordner werden rekursiv nach passenden Dateien durchsucht (in
     /// natürlicher Namensreihenfolge), einzelne Dateien direkt übernommen.
     private func acceptedFiles(from input: [URL]) -> [URL] {
         let fm = FileManager.default
@@ -1164,10 +1291,10 @@ struct DropField: View {
                 let files = (fm.enumerator(at: url, includingPropertiesForKeys: nil,
                                            options: [.skipsHiddenFiles, .skipsPackageDescendants])?
                     .compactMap { $0 as? URL }
-                    .filter { Self.acceptedExtensions.contains($0.pathExtension.lowercased()) } ?? [])
+                    .filter { acceptedExtensions.contains($0.pathExtension.lowercased()) } ?? [])
                     .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
                 result.append(contentsOf: files)
-            } else if Self.acceptedExtensions.contains(url.pathExtension.lowercased()) {
+            } else if acceptedExtensions.contains(url.pathExtension.lowercased()) {
                 result.append(url)
             }
         }
@@ -1182,6 +1309,12 @@ struct DropField: View {
     private func add(_ input: [URL]) -> Bool {
         let accepted = acceptedFiles(from: input)
         guard !accepted.isEmpty else { return false }
+        // XLSX-Sonderpfad (z. B. Ausbildungsverlauf): die Datei wird nicht direkt
+        // übernommen, sondern zur Weiterverarbeitung übergeben.
+        if let onXLSX, let xlsx = accepted.first(where: { $0.pathExtension.lowercased() == "xlsx" }) {
+            onXLSX(xlsx)
+            return true
+        }
         var seen = Set(urls.map(\.standardizedFileURL.path))
         // Pro Feld ist höchstens eine ZIP sinnvoll; weitere ZIPs werden
         // ignoriert. PDFs bleiben unbegrenzt; Ordner wurden bereits in
@@ -1222,12 +1355,14 @@ struct DropField: View {
     /// oder ganzen Ordnern (deren Inhalt dann übernommen wird).
     private func chooseFiles() {
         let panel = NSOpenPanel()
-        panel.title = "PDF-/ZIP-Dateien oder Ordner auswählen"
-        panel.message = "Wähle einzelne PDF-/ZIP-Dateien oder einen Ordner mit den passenden Dateien."
+        panel.title = "Dateien oder Ordner auswählen"
+        panel.message = "Wähle passende Dateien oder einen Ordner mit den passenden Dateien."
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [.pdf, .zip]
+        panel.allowedContentTypes = acceptedExtensions.compactMap {
+            UTType(filenameExtension: $0)
+        }
         if panel.runModal() == .OK {
             add(panel.urls)
         }
