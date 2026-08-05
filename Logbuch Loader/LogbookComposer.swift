@@ -45,6 +45,9 @@ enum LogbookComposer {
     private static let tocStartY: CGFloat = 360
     private static let tocRowH: CGFloat = 44
     private static let tocFont = NSFont.systemFont(ofSize: 18)
+    /// Unterkante der Einträge (über der Fußzeile); begrenzt die Zeilenhöhe, wenn
+    /// viele Kapitel/Unterkapitel zusammenkommen.
+    private static let tocBottomLimit: CGFloat = 720
 
     /// Kapitel: römische Ziffer, Titel (für Inhaltsverzeichnis + Deckblatt) und
     /// die zugehörigen Inhalts-PDFs. Hat ein Kapitel Unterkapitel, sind `files`
@@ -416,8 +419,7 @@ enum LogbookComposer {
         let entries = tocEntries(chapters)
         // Zeilenhöhe an die Anzahl anpassen, damit auch mit Unterkapiteln alles
         // oberhalb der Fußzeile bleibt.
-        let bottomLimit: CGFloat = 720
-        let available = bottomLimit - tocStartY
+        let available = tocBottomLimit - tocStartY
         let rowH = entries.isEmpty ? tocRowH
             : min(tocRowH, available / CGFloat(entries.count))
 
@@ -448,59 +450,45 @@ enum LogbookComposer {
 
     private static func drawChapterDivider(_ ctx: CGContext, index: Int,
                                            chapter: Chapter, info: CoverInfo, logo: NSImage?) {
-        ctx.beginPDFPage(nil)
-        withAppKit(ctx) {
-            drawLogo(logo, top: 40, maxWidth: 220, maxHeight: 90)
-
-            let romanFont = NSFont.systemFont(ofSize: 26, weight: .bold)
-            let titleFont = NSFont.systemFont(ofSize: 26, weight: .semibold)
-            let roman = NSAttributedString(string: "\(chapter.roman).",
-                                           attributes: [.font: romanFont, .foregroundColor: accentRed])
-            let title = NSAttributedString(string: chapter.title,
-                                           attributes: [.font: titleFont, .foregroundColor: accentBlue])
-            let gap: CGFloat = 16
-            let total = roman.size().width + gap + title.size().width
-            let startX = (W - total) / 2
-            let y: CGFloat = 395
-            roman.draw(at: CGPoint(x: startX, y: y))
-            title.draw(at: CGPoint(x: startX + roman.size().width + gap, y: y))
-            ruleX(startX, y + titleFont.pointSize * 1.35, total, color: ruleColor, thickness: 1)
-
-            drawFooter(info: info)
-        }
-
-        // Sprungziel für das Inhaltsverzeichnis (oberer Seitenrand).
-        ctx.addDestination("chapter_\(index)" as CFString, at: CGPoint(x: 0, y: H))
-        ctx.endPDFPage()
+        drawDivider(ctx, label: "\(chapter.roman).", title: chapter.title,
+                    fontSize: 26, gap: 16, y: 395, dest: "chapter_\(index)", info: info, logo: logo)
     }
 
     /// Deckblatt eines Unterkapitels – wie das Kapiteldeckblatt, aber etwas
     /// kleiner und mit der Unterkapitel-Nummer („VI.1").
     private static func drawSubchapterDivider(_ ctx: CGContext, chapterIndex: Int, subIndex: Int,
                                               sub: Subchapter, info: CoverInfo, logo: NSImage?) {
+        drawDivider(ctx, label: sub.number, title: sub.title,
+                    fontSize: 22, gap: 14, y: 405,
+                    dest: "chapter_\(chapterIndex)_\(subIndex)", info: info, logo: logo)
+    }
+
+    /// Gemeinsames Deckblatt für Kapitel und Unterkapitel: Label (Akzentrot) und
+    /// Titel (Akzentblau) mittig, darunter eine dünne Linie; mit Sprungziel fürs
+    /// Inhaltsverzeichnis.
+    private static func drawDivider(_ ctx: CGContext, label: String, title: String,
+                                    fontSize: CGFloat, gap: CGFloat, y: CGFloat,
+                                    dest: String, info: CoverInfo, logo: NSImage?) {
         ctx.beginPDFPage(nil)
         withAppKit(ctx) {
             drawLogo(logo, top: 40, maxWidth: 220, maxHeight: 90)
 
-            let numberFont = NSFont.systemFont(ofSize: 22, weight: .bold)
-            let titleFont = NSFont.systemFont(ofSize: 22, weight: .semibold)
-            let number = NSAttributedString(string: sub.number,
-                                            attributes: [.font: numberFont, .foregroundColor: accentRed])
-            let title = NSAttributedString(string: sub.title,
-                                           attributes: [.font: titleFont, .foregroundColor: accentBlue])
-            let gap: CGFloat = 14
-            let total = number.size().width + gap + title.size().width
+            let labelStr = NSAttributedString(string: label,
+                attributes: [.font: NSFont.systemFont(ofSize: fontSize, weight: .bold), .foregroundColor: accentRed])
+            let titleFont = NSFont.systemFont(ofSize: fontSize, weight: .semibold)
+            let titleStr = NSAttributedString(string: title,
+                attributes: [.font: titleFont, .foregroundColor: accentBlue])
+            let total = labelStr.size().width + gap + titleStr.size().width
             let startX = (W - total) / 2
-            let y: CGFloat = 405
-            number.draw(at: CGPoint(x: startX, y: y))
-            title.draw(at: CGPoint(x: startX + number.size().width + gap, y: y))
+            labelStr.draw(at: CGPoint(x: startX, y: y))
+            titleStr.draw(at: CGPoint(x: startX + labelStr.size().width + gap, y: y))
             ruleX(startX, y + titleFont.pointSize * 1.35, total, color: ruleColor, thickness: 1)
 
             drawFooter(info: info)
         }
 
         // Sprungziel für das Inhaltsverzeichnis (oberer Seitenrand).
-        ctx.addDestination("chapter_\(chapterIndex)_\(subIndex)" as CFString, at: CGPoint(x: 0, y: H))
+        ctx.addDestination(dest as CFString, at: CGPoint(x: 0, y: H))
         ctx.endPDFPage()
     }
 

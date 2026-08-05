@@ -1073,21 +1073,21 @@ struct ComposerView: View {
         resultMessage = nil
 
         // Ausbildungsfahrten anhand des Ausbildungsplans in Unterkapitel
-        // aufteilen – sofern ein Plan vorliegt und Phasen erkannt werden. Bei
-        // überlappenden Monaten zuerst den Konflikt vom Anwender klären lassen.
-        let driveFiles = expandedDriveFiles()
-        let phaseMonths: [AusbildungsplanParser.Phase: Set<Int>]
-        if let plan = model.files(for: .ausbildungsplan).first, !driveFiles.isEmpty {
-            phaseMonths = AusbildungsplanParser.phaseMonths(inPDF: plan)
-        } else {
-            phaseMonths = [:]
+        // aufteilen – nur wenn ein Plan mit erkannten Phasen und Fahrten vorliegt
+        // (sonst kein unnötiges Entpacken). Bei überlappenden Monaten zuerst den
+        // Konflikt vom Anwender klären lassen.
+        guard let plan = model.files(for: .ausbildungsplan).first,
+              !model.files(for: .ausbildungsfahrten).isEmpty else {
+            buildBook(driveSubchapters: [])
+            return
         }
-
+        let phaseMonths = AusbildungsplanParser.phaseMonths(inPDF: plan)
         guard !phaseMonths.isEmpty else {
-            buildBook(driveSubchapters: [])   // kein Plan/keine Phasen → flaches Kapitel
+            buildBook(driveSubchapters: [])   // keine Phasen erkannt → flaches Kapitel
             return
         }
 
+        let driveFiles = expandedDriveFiles()
         let assignment = AusbildungsplanParser.assign(drives: driveFiles, phaseMonths: phaseMonths)
         if !assignment.conflicts.isEmpty {
             conflictChoices = Dictionary(uniqueKeysWithValues:
@@ -1108,17 +1108,21 @@ struct ComposerView: View {
         buildBook(driveSubchapters: assignment.byPhase)
     }
 
+    /// Temporäres Verzeichnis für die zum Bucketing entpackten Fahrten-PDFs.
+    private var driveBucketingDir: URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("DriveBucketing", isDirectory: true)
+    }
+
     /// Löst die Ausbildungsfahrten (inkl. ZIPs) zu einzelnen PDFs auf – Grundlage
-    /// der Zuordnung zu Unterkapiteln. Die PDFs liegen in einem temporären
-    /// Verzeichnis, das bis zum Bau bestehen bleibt.
+    /// der Zuordnung zu Unterkapiteln. Die PDFs liegen in `driveBucketingDir` und
+    /// werden nach dem Bau (`buildBook`) wieder entfernt.
     private func expandedDriveFiles() -> [URL] {
         let urls = model.files(for: .ausbildungsfahrten)
         guard !urls.isEmpty else { return [] }
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("DriveBucketing", isDirectory: true)
-        try? FileManager.default.removeItem(at: dir)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return LogbookComposer.expandToPDFs(urls, into: dir)
+        try? FileManager.default.removeItem(at: driveBucketingDir)
+        try? FileManager.default.createDirectory(at: driveBucketingDir, withIntermediateDirectories: true)
+        return LogbookComposer.expandToPDFs(urls, into: driveBucketingDir)
     }
 
     /// Baut das vollständige Ausbildungsbuch (Deckblatt, Inhaltsverzeichnis,
@@ -1167,9 +1171,12 @@ struct ComposerView: View {
                 return LogbookComposer.ChapterInput(title: field.bookTitle, files: field.urls, sort: field.sortKind)
             }
 
-            guard let data = LogbookComposer.build(chapters: chapters, user: user,
-                                                   submissionDate: submissionDate, logo: logo,
-                                                   pageNumbers: pageNumbers) else {
+            let data = LogbookComposer.build(chapters: chapters, user: user,
+                                             submissionDate: submissionDate, logo: logo,
+                                             pageNumbers: pageNumbers)
+            // Die entpackten Fahrten-PDFs sind jetzt in `data` eingebettet.
+            try? FileManager.default.removeItem(at: driveBucketingDir)
+            guard let data else {
                 resultIsError = true
                 resultMessage = "Das Ausbildungsbuch konnte nicht erstellt werden."
                 return

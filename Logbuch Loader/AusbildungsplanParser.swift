@@ -49,7 +49,7 @@ enum AusbildungsplanParser {
         }
 
         /// Kleingeschriebene Teilzeichenfolge, an der das Label in Spalte 1
-        /// erkannt wird (diakritik-tolerant über `foldedContains`).
+        /// erkannt wird (diakritik-tolerant, vgl. `fold`).
         fileprivate var labelKey: String {
             switch self {
             case .coaching:         return "coaching"
@@ -69,6 +69,14 @@ enum AusbildungsplanParser {
         "prufung", "theorie", "simulator", "ppu", "kanalbereisung",
         "mitglieder", "schiffsfuhrungssimulator",
     ]
+
+    // Layout-Annahmen der A4-Plan-Tabelle: Spalte 1 (Phase/„Monat …") links,
+    // Spalte 2 (Monate) in der Mitte, Spalte 3 (Beschreibung) rechts. Die Werte
+    // sind Anteile der Seitenbreite (bei A4 ≈ x150 bzw. x248).
+    private static let col2Fraction: CGFloat = 0.252
+    private static let col3Fraction: CGFloat = 0.417
+    /// y-Toleranz (pt), mit der eine Spalte-2-Zeile ihrer Grenze zugeordnet wird.
+    private static let boundaryTolerance: CGFloat = 3
 
     // MARK: - Öffentliche API
 
@@ -180,10 +188,10 @@ enum AusbildungsplanParser {
         // Undatierte Fahrten an die erste vorhandene Phase, damit keine verloren geht.
         if !undated.isEmpty { assigned[presentPhases[0], default: []].append(contentsOf: undated) }
 
-        let byPhase = presentPhases.compactMap { phase -> (Phase, [URL])? in
+        let byPhase = presentPhases.compactMap { phase -> (phase: Phase, files: [URL])? in
             guard let files = assigned[phase], !files.isEmpty else { return nil }
-            return (phase, files)
-        }.map { (phase: $0.0, files: $0.1) }
+            return (phase: phase, files: files)
+        }
 
         return Assignment(byPhase: byPhase, conflicts: conflicts)
     }
@@ -231,9 +239,10 @@ enum AusbildungsplanParser {
         // Grenzen: Zeilen, deren Spalte 1 ein Ziel- oder sonstiges Label enthält.
         var boundaries: [(y: CGFloat, phase: Phase?)] = []
         for line in lines {
-            if let phase = Phase.allCases.first(where: { foldedContains(line.col1, $0.labelKey) }) {
+            let folded = fold(line.col1)   // einmal falten, dann mehrfach vergleichen
+            if let phase = Phase.allCases.first(where: { folded.contains($0.labelKey) }) {
                 boundaries.append((line.y, phase))
-            } else if otherLabels.contains(where: { foldedContains(line.col1, $0) }) {
+            } else if otherLabels.contains(where: { folded.contains($0) }) {
                 boundaries.append((line.y, nil))
             }
         }
@@ -243,11 +252,10 @@ enum AusbildungsplanParser {
         // Jede Spalte-2-Zeile der Grenze mit dem größten y ≤ Zeilen-y zuordnen.
         var col2ByBoundary: [Int: [String]] = [:]   // Schlüssel = Grenzindex
         for line in lines where !line.col2.trimmingCharacters(in: .whitespaces).isEmpty {
-            var ownerIndex: Int?
-            for (i, b) in boundaries.enumerated() {
-                if b.y <= line.y + 3 { ownerIndex = i } else { break }
+            // boundaries ist nach y sortiert → die letzte passende ist die Grenze.
+            if let i = boundaries.lastIndex(where: { $0.y <= line.y + boundaryTolerance }) {
+                col2ByBoundary[i, default: []].append(line.col2)
             }
-            if let i = ownerIndex { col2ByBoundary[i, default: []].append(line.col2) }
         }
 
         var result: [Phase: Set<Int>] = [:]
@@ -269,8 +277,8 @@ enum AusbildungsplanParser {
     private static func extractLines(_ page: PDFPage) -> [Line] {
         let bounds = page.bounds(for: .cropBox)
         guard let whole = page.selection(for: bounds) else { return [] }
-        let col2X = bounds.minX + bounds.width * 0.252   // Spalte 2 (Monate) ~x150 bei A4
-        let col3X = bounds.minX + bounds.width * 0.417   // Spalte 3 (Beschreibung) ~x248
+        let col2X = bounds.minX + bounds.width * col2Fraction
+        let col3X = bounds.minX + bounds.width * col3Fraction
 
         func columnText(_ lineBounds: CGRect, from x0: CGFloat, to x1: CGFloat) -> String {
             let rect = CGRect(x: x0, y: lineBounds.minY, width: x1 - x0, height: lineBounds.height)
@@ -333,9 +341,5 @@ enum AusbildungsplanParser {
     private static func fold(_ s: String) -> String {
         let lowered = s.lowercased().replacingOccurrences(of: "ß", with: "ss")
         return lowered.folding(options: .diacriticInsensitive, locale: Locale(identifier: "de_DE"))
-    }
-
-    private static func foldedContains(_ haystack: String, _ needle: String) -> Bool {
-        fold(haystack).contains(needle)
     }
 }
