@@ -47,9 +47,18 @@ enum LogbookComposer {
     private static let tocFont = NSFont.systemFont(ofSize: 18)
 
     /// Kapitel: römische Ziffer, Titel (für Inhaltsverzeichnis + Deckblatt) und
-    /// die zugehörigen Inhalts-PDFs.
+    /// die zugehörigen Inhalts-PDFs. Hat ein Kapitel Unterkapitel, sind `files`
+    /// leer und die Inhalte liegen in `subchapters`.
     struct Chapter {
         let roman: String
+        let title: String
+        let files: [URL]
+        var subchapters: [Subchapter] = []
+    }
+
+    /// Unterkapitel mit eigener Nummer („VI.1"), Deckblatt und Sprungziel.
+    struct Subchapter {
+        let number: String
         let title: String
         let files: [URL]
     }
@@ -68,6 +77,15 @@ enum LogbookComposer {
         let title: String
         let files: [URL]
         let sort: SortKind
+        /// Optionale Unterkapitel. Sind welche gesetzt, werden `files` ignoriert;
+        /// jedes nicht-leere Unterkapitel erhält ein eigenes Deckblatt.
+        var subchapters: [SubchapterInput] = []
+    }
+
+    /// Ein Unterkapitel als Eingabe für `build`.
+    struct SubchapterInput {
+        let title: String
+        let files: [URL]
     }
 
     /// Erzeugt das gesamte Ausbildungsbuch als PDF-Daten.
@@ -77,7 +95,7 @@ enum LogbookComposer {
     @MainActor
     static func build(chapters input: [ChapterInput],
                       user: LogbuchUser, submissionDate: Date = Date(),
-                      logo: NSImage? = nil) -> Data? {
+                      logo: NSImage? = nil, pageNumbers: Bool = true) -> Data? {
         // Temporäres Arbeitsverzeichnis für aus ZIPs entpackte PDFs.
         let workDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("LogbuchLoader-\(UUID().uuidString)", isDirectory: true)
@@ -85,27 +103,37 @@ enum LogbookComposer {
         defer { try? FileManager.default.removeItem(at: workDir) }
 
         // Nur Kapitel mit mindestens einer Datei. ZIP-Dateien werden vorab in
-        // ihre enthaltenen PDFs aufgelöst; jedes Kapitel wird nach seiner Regel
-        // sortiert (chronologisch, wo eine Datumslogik greift, sonst alphabetisch).
-        var sections: [(title: String, files: [URL])] = []
+        // ihre enthaltenen PDFs aufgelöst; jedes Kapitel (bzw. Unterkapitel) wird
+        // nach seiner Regel sortiert (chronologisch, wo eine Datumslogik greift,
+        // sonst alphabetisch). Leere Kapitel/Unterkapitel fallen heraus.
+        var sections: [(title: String, files: [URL], subs: [(title: String, files: [URL])])] = []
         for ch in input {
-            let pdfs = expandArchives(ch.files, into: workDir)
-            guard !pdfs.isEmpty else { continue }
-            let files: [URL]
-            switch ch.sort {
-            case .driveDate:    files = sortedFiles(pdfs, date: driveFileDate)
-            case .simulator:    files = sortedFiles(pdfs, date: simulatorDate)
-            case .certificate:  files = sortedFiles(pdfs, date: certificateFileDate)
-            case .alphabetical: files = sortedFiles(pdfs, date: { _ in nil })
+            if ch.subchapters.isEmpty {
+                let files = resolvedFiles(ch.files, into: workDir, sort: ch.sort)
+                guard !files.isEmpty else { continue }
+                sections.append((ch.title, files, []))
+            } else {
+                var subs: [(title: String, files: [URL])] = []
+                for sub in ch.subchapters {
+                    let files = resolvedFiles(sub.files, into: workDir, sort: ch.sort)
+                    guard !files.isEmpty else { continue }
+                    subs.append((sub.title, files))
+                }
+                guard !subs.isEmpty else { continue }
+                sections.append((ch.title, [], subs))
             }
-            sections.append((ch.title, files))
         }
 
         guard !sections.isEmpty else { return nil }
 
-        // Fortlaufende römische Nummerierung über alle Kapitel hinweg.
-        let chapters = sections.enumerated().map { i, s in
-            Chapter(roman: romanNumeral(i + 1), title: s.title, files: s.files)
+        // Fortlaufende römische Nummerierung über alle Kapitel hinweg;
+        // Unterkapitel erhalten „<roman>.<n>".
+        let chapters = sections.enumerated().map { i, s -> Chapter in
+            let roman = romanNumeral(i + 1)
+            let subchapters = s.subs.enumerated().map { j, sub in
+                Subchapter(number: "\(roman).\(j + 1)", title: sub.title, files: sub.files)
+            }
+            return Chapter(roman: roman, title: s.title, files: s.files, subchapters: subchapters)
         }
         let info = CoverInfo(user: user)
 
@@ -123,11 +151,35 @@ enum LogbookComposer {
         for (index, chapter) in chapters.enumerated() {
             pageNumber += 1   // Kapiteldeckblatt zählt mit (unsichtbar)
             drawChapterDivider(ctx, index: index, chapter: chapter, info: info, logo: logo)
-            for url in chapter.files { appendContent(url, ctx: ctx, pageNumber: &pageNumber) }
+            if chapter.subchapters.isEmpty {
+                for url in chapter.files {
+                    appendContent(url, ctx: ctx, pageNumber: &pageNumber, pageNumbers: pageNumbers)
+                }
+            } else {
+                for (subIndex, sub) in chapter.subchapters.enumerated() {
+                    pageNumber += 1   // Unterkapitel-Deckblatt zählt mit (unsichtbar)
+                    drawSubchapterDivider(ctx, chapterIndex: index, subIndex: subIndex,
+                                          sub: sub, info: info, logo: logo)
+                    for url in sub.files {
+                        appendContent(url, ctx: ctx, pageNumber: &pageNumber, pageNumbers: pageNumbers)
+                    }
+                }
+            }
         }
 
         ctx.closePDF()
         return pdfData as Data
+    }
+
+    /// Löst ZIPs auf und sortiert die PDFs nach der Kapitelregel.
+    private static func resolvedFiles(_ urls: [URL], into workDir: URL, sort: SortKind) -> [URL] {
+        let pdfs = expandArchives(urls, into: workDir)
+        switch sort {
+        case .driveDate:    return sortedFiles(pdfs, date: driveFileDate)
+        case .simulator:    return sortedFiles(pdfs, date: simulatorDate)
+        case .certificate:  return sortedFiles(pdfs, date: certificateFileDate)
+        case .alphabetical: return sortedFiles(pdfs, date: { _ in nil })
+        }
     }
 
     // MARK: - Dateiname
@@ -169,6 +221,14 @@ enum LogbookComposer {
     }
 
     // MARK: - ZIP-Auflösung
+
+    /// Löst Feld-Dateien zu einzelnen PDF-URLs auf (ZIPs entpackt nach `dir`),
+    /// ohne Sortierung – für die Vorab-Zuordnung der Ausbildungsfahrten zu
+    /// Unterkapiteln. Die zurückgegebenen PDFs müssen bis zum `build`-Aufruf
+    /// bestehen bleiben.
+    static func expandToPDFs(_ urls: [URL], into dir: URL) -> [URL] {
+        expandArchives(urls, into: dir)
+    }
 
     /// Ersetzt ZIP-Dateien durch die enthaltenen PDFs (entpackt nach `dir`); lose
     /// PDFs bleiben unverändert. Andere Dateitypen werden ignoriert.
@@ -336,7 +396,31 @@ enum LogbookComposer {
         ctx.endPDFPage()
     }
 
+    /// Ein Inhaltsverzeichnis-Eintrag (Kapitel oder eingerücktes Unterkapitel).
+    private struct TOCEntry { let title: String; let number: String; let dest: String; let indent: Bool }
+
+    private static func tocEntries(_ chapters: [Chapter]) -> [TOCEntry] {
+        var entries: [TOCEntry] = []
+        for (i, chapter) in chapters.enumerated() {
+            entries.append(TOCEntry(title: chapter.title, number: chapter.roman,
+                                    dest: "chapter_\(i)", indent: false))
+            for (j, sub) in chapter.subchapters.enumerated() {
+                entries.append(TOCEntry(title: sub.title, number: sub.number,
+                                        dest: "chapter_\(i)_\(j)", indent: true))
+            }
+        }
+        return entries
+    }
+
     private static func drawTOCPage(_ ctx: CGContext, chapters: [Chapter], info: CoverInfo, logo: NSImage?) {
+        let entries = tocEntries(chapters)
+        // Zeilenhöhe an die Anzahl anpassen, damit auch mit Unterkapiteln alles
+        // oberhalb der Fußzeile bleibt.
+        let bottomLimit: CGFloat = 720
+        let available = bottomLimit - tocStartY
+        let rowH = entries.isEmpty ? tocRowH
+            : min(tocRowH, available / CGFloat(entries.count))
+
         ctx.beginPDFPage(nil)
         withAppKit(ctx) {
             drawLogo(logo, top: 40, maxWidth: 220, maxHeight: 90)
@@ -344,21 +428,20 @@ enum LogbookComposer {
                          color: accentBlue, y: 250)
             rule(centerWidth: 180, y: 292, color: accentRed)
 
-            for (i, chapter) in chapters.enumerated() {
-                drawTOCEntry(left: chapter.title, right: chapter.roman,
-                             y: tocStartY + CGFloat(i) * tocRowH)
+            for (i, entry) in entries.enumerated() {
+                drawTOCEntry(entry, y: tocStartY + CGFloat(i) * rowH)
             }
             drawFooter(info: info)
         }
 
-        // Klickbare Bereiche je Eintrag → benanntes Ziel "chapter_i"
+        // Klickbare Bereiche je Eintrag → benanntes Ziel
         // (y-up-Koordinaten, da der Flip aus withAppKit bereits zurückgesetzt ist).
-        for i in chapters.indices {
-            let yTop = tocStartY + CGFloat(i) * tocRowH
+        for (i, entry) in entries.enumerated() {
+            let yTop = tocStartY + CGFloat(i) * rowH
             let lineH = tocFont.pointSize * 1.3
             let rect = CGRect(x: leftMargin, y: H - (yTop + lineH),
                               width: rightMargin - leftMargin, height: lineH + 6)
-            ctx.setDestination("chapter_\(i)" as CFString, for: rect)
+            ctx.setDestination(entry.dest as CFString, for: rect)
         }
         ctx.endPDFPage()
     }
@@ -388,6 +471,36 @@ enum LogbookComposer {
 
         // Sprungziel für das Inhaltsverzeichnis (oberer Seitenrand).
         ctx.addDestination("chapter_\(index)" as CFString, at: CGPoint(x: 0, y: H))
+        ctx.endPDFPage()
+    }
+
+    /// Deckblatt eines Unterkapitels – wie das Kapiteldeckblatt, aber etwas
+    /// kleiner und mit der Unterkapitel-Nummer („VI.1").
+    private static func drawSubchapterDivider(_ ctx: CGContext, chapterIndex: Int, subIndex: Int,
+                                              sub: Subchapter, info: CoverInfo, logo: NSImage?) {
+        ctx.beginPDFPage(nil)
+        withAppKit(ctx) {
+            drawLogo(logo, top: 40, maxWidth: 220, maxHeight: 90)
+
+            let numberFont = NSFont.systemFont(ofSize: 22, weight: .bold)
+            let titleFont = NSFont.systemFont(ofSize: 22, weight: .semibold)
+            let number = NSAttributedString(string: sub.number,
+                                            attributes: [.font: numberFont, .foregroundColor: accentRed])
+            let title = NSAttributedString(string: sub.title,
+                                           attributes: [.font: titleFont, .foregroundColor: accentBlue])
+            let gap: CGFloat = 14
+            let total = number.size().width + gap + title.size().width
+            let startX = (W - total) / 2
+            let y: CGFloat = 405
+            number.draw(at: CGPoint(x: startX, y: y))
+            title.draw(at: CGPoint(x: startX + number.size().width + gap, y: y))
+            ruleX(startX, y + titleFont.pointSize * 1.35, total, color: ruleColor, thickness: 1)
+
+            drawFooter(info: info)
+        }
+
+        // Sprungziel für das Inhaltsverzeichnis (oberer Seitenrand).
+        ctx.addDestination("chapter_\(chapterIndex)_\(subIndex)" as CFString, at: CGPoint(x: 0, y: H))
         ctx.endPDFPage()
     }
 
@@ -439,18 +552,26 @@ enum LogbookComposer {
         NSBezierPath(rect: CGRect(x: x, y: y, width: w, height: thickness)).fill()
     }
 
-    /// Eine Inhaltsverzeichnis-Zeile: Titel links, römische Ziffer (Akzentfarbe)
-    /// rechtsbündig, dazwischen eine dezente Punktführung.
-    private static func drawTOCEntry(left: String, right: String, y: CGFloat) {
-        let leftStr = NSAttributedString(string: left, attributes: [.font: tocFont, .foregroundColor: ink])
-        let rightStr = NSAttributedString(string: right, attributes:
-            [.font: NSFont.systemFont(ofSize: 18, weight: .semibold), .foregroundColor: accentBlue])
-        leftStr.draw(at: CGPoint(x: leftMargin, y: y))
+    /// Eine Inhaltsverzeichnis-Zeile: Titel links, Nummer (Akzentfarbe)
+    /// rechtsbündig, dazwischen eine dezente Punktführung. Unterkapitel werden
+    /// eingerückt und etwas kleiner/dezenter gesetzt.
+    private static func drawTOCEntry(_ entry: TOCEntry, y: CGFloat) {
+        let indentX: CGFloat = entry.indent ? 30 : 0
+        let leftX = leftMargin + indentX
+        let leftFont = entry.indent ? NSFont.systemFont(ofSize: 15) : tocFont
+        let rightFont = NSFont.systemFont(ofSize: entry.indent ? 15 : 18, weight: .semibold)
+        let leftColor = entry.indent ? subtle : ink
+        let rightColor = entry.indent ? subtle : accentBlue
+
+        let leftStr = NSAttributedString(string: entry.title, attributes: [.font: leftFont, .foregroundColor: leftColor])
+        let rightStr = NSAttributedString(string: entry.number, attributes:
+            [.font: rightFont, .foregroundColor: rightColor])
+        leftStr.draw(at: CGPoint(x: leftX, y: y))
         rightStr.draw(at: CGPoint(x: rightMargin - rightStr.size().width, y: y))
 
-        let dotAttrs: [NSAttributedString.Key: Any] = [.font: tocFont, .foregroundColor: ruleColor]
+        let dotAttrs: [NSAttributedString.Key: Any] = [.font: leftFont, .foregroundColor: ruleColor]
         let dotW = max(NSAttributedString(string: ".", attributes: dotAttrs).size().width, 1)
-        let dotsStart = leftMargin + leftStr.size().width + 6
+        let dotsStart = leftX + leftStr.size().width + 6
         let dotsEnd = rightMargin - rightStr.size().width - 8
         if dotsEnd > dotsStart {
             let count = Int((dotsEnd - dotsStart) / dotW)
@@ -482,21 +603,22 @@ enum LogbookComposer {
 
     // MARK: - Inhalts-Seiten (A4-normiert)
 
-    private static func appendContent(_ url: URL, ctx: CGContext, pageNumber: inout Int) {
+    private static func appendContent(_ url: URL, ctx: CGContext, pageNumber: inout Int, pageNumbers: Bool) {
         let granted = url.startAccessingSecurityScopedResource()
         defer { if granted { url.stopAccessingSecurityScopedResource() } }
         guard let doc = CGPDFDocument(url as CFURL), doc.numberOfPages > 0 else { return }
         for i in 1...doc.numberOfPages {
             guard let page = doc.page(at: i) else { continue }
             pageNumber += 1
-            drawPageOntoA4(page, in: ctx, pageNumber: pageNumber)
+            drawPageOntoA4(page, in: ctx, pageNumber: pageNumber, showPageNumber: pageNumbers)
         }
     }
 
     /// Zeichnet eine Quellseite größengerecht und zentriert auf A4-Hochformat
     /// und setzt unten rechts die Seitenzahl. Querformat wird um 90° gegen den
     /// Uhrzeigersinn gedreht.
-    private static func drawPageOntoA4(_ page: CGPDFPage, in ctx: CGContext, pageNumber: Int) {
+    private static func drawPageOntoA4(_ page: CGPDFPage, in ctx: CGContext, pageNumber: Int,
+                                       showPageNumber: Bool) {
         let box = page.getBoxRect(.cropBox)
         let intrinsic = ((Int(page.rotationAngle) % 360) + 360) % 360
         let rotated90 = intrinsic == 90 || intrinsic == 270
@@ -513,7 +635,7 @@ enum LogbookComposer {
         ctx.clip(to: box)
         ctx.drawPDFPage(page)
         ctx.restoreGState()
-        drawPageNumber(ctx, pageNumber, landscape: isLandscape)
+        if showPageNumber { drawPageNumber(ctx, pageNumber, landscape: isLandscape) }
         ctx.endPDFPage()
     }
 

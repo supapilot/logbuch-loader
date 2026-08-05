@@ -7,6 +7,21 @@ und das Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.3.7] – 2026-08-05
+
+### Hinzugefügt
+- **Ausbildungsfahrten in Unterkapitel:** Liegt ein Ausbildungsplan vor, werden
+  die Ausbildungsfahrten automatisch den Phasen **Coaching Phase**,
+  **Hafenlotsentörn**, **Freie Fahrt** und **Fester Törn** zugeordnet – je mit
+  eigenem Deckblatt und als Unterkapitel im Inhaltsverzeichnis verlinkt. Die
+  Zuordnung liest die Monate der Phasen aus der Plan-Tabelle; überschneiden sich
+  Monate, wird pro Monat kurz nachgefragt, Monate ohne Phase gehen an die
+  zeitlich nächste. Ohne Plan bleibt „Ausbildungsfahrten" wie bisher ein
+  einzelnes Kapitel.
+- **Seitenzahlen optional:** Ein Ankreuzfeld unter „Ausbildungsbuch erstellen"
+  schaltet die Seitenzahlen im erzeugten Buch ein oder aus (Auswahl wird
+  gemerkt).
+
 ## [1.3.6] – 2026-08-04
 
 ### Hinzugefügt
@@ -166,7 +181,8 @@ Erste öffentliche Version.
   Logo der gewählten Lotsenbrüderschaft.
 - Notarisierte, per Developer ID signierte Verteilung als DMG.
 
-[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.6...HEAD
+[Unveröffentlicht]: https://github.com/supapilot/logbuch-loader/compare/v1.3.7...HEAD
+[1.3.7]: https://github.com/supapilot/logbuch-loader/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/supapilot/logbuch-loader/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/supapilot/logbuch-loader/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/supapilot/logbuch-loader/compare/v1.3.3...v1.3.4

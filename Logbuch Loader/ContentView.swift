@@ -710,6 +710,15 @@ struct ComposerView: View {
     /// Fehlermeldung bei der XLSX-Verarbeitung.
     @State private var xlsxError: String?
 
+    /// Seitenzahlen ins Ausbildungsbuch drucken? (über Neustarts gemerkt)
+    @AppStorage("composerPageNumbers") private var includePageNumbers = true
+
+    /// Offener Konfliktdialog zur Zuordnung der Ausbildungsfahrten: Monate, die
+    /// im Ausbildungsplan zu mehreren Phasen gehören, müssen zugeordnet werden.
+    @State private var driveConflict: DriveConflictPrompt?
+    /// Im Konfliktdialog gewählte Phase je Konfliktmonat.
+    @State private var conflictChoices: [Int: AusbildungsplanParser.Phase] = [:]
+
     /// Angaben für den XLSX-Bestätigungsdialog.
     struct XLSXPrompt: Identifiable {
         let id = UUID()
@@ -717,6 +726,15 @@ struct ComposerView: View {
         let fieldID: UUID
         let candidates: [String]
         let confident: Bool
+    }
+
+    /// Offener Zuordnungskonflikt der Ausbildungsfahrten. Hält alles, um nach dem
+    /// Auflösen (Phasenwahl je Monat) den Bau fortzusetzen.
+    struct DriveConflictPrompt: Identifiable {
+        let id = UUID()
+        let conflicts: [AusbildungsplanParser.MonthConflict]
+        let phaseMonths: [AusbildungsplanParser.Phase: Set<Int>]
+        let driveFiles: [URL]
     }
 
     /// Höchstzahl zusätzlicher, benutzerdefinierter Kapitel (eine weitere
@@ -866,6 +884,10 @@ struct ComposerView: View {
                 .controlSize(.large)
                 .disabled(!hasFiles || isBuilding)
 
+                Toggle("Seitenzahlen", isOn: $includePageNumbers)
+                    .toggleStyle(.checkbox)
+                    .disabled(isBuilding)
+
                 if let resultMessage {
                     Text(resultMessage)
                         .font(.subheadline)
@@ -892,6 +914,12 @@ struct ComposerView: View {
             set: { if !$0 { xlsxError = nil } })) {
             Button("OK", role: .cancel) { xlsxError = nil }
         } message: { Text(xlsxError ?? "") }
+        .sheet(item: $driveConflict) { prompt in
+            DriveConflictSheet(conflicts: prompt.conflicts,
+                               choices: $conflictChoices,
+                               onCancel: { driveConflict = nil },
+                               onConfirm: { resolveDriveConflict(prompt) })
+        }
     }
 
     // MARK: - XLSX-Verarbeitung (Ausbildungsverlauf)
@@ -1037,14 +1065,72 @@ struct ComposerView: View {
     /// nach dem Zielort (Vorgabe: Ausbildungsbuch.pdf).
     private func createLogbook() {
         guard hasFiles, !isBuilding else { return }
-        guard let user else {
+        guard user != nil else {
             resultIsError = true
             resultMessage = "Nicht angemeldet."
             return
         }
+        resultMessage = nil
+
+        // Ausbildungsfahrten anhand des Ausbildungsplans in Unterkapitel
+        // aufteilen – sofern ein Plan vorliegt und Phasen erkannt werden. Bei
+        // überlappenden Monaten zuerst den Konflikt vom Anwender klären lassen.
+        let driveFiles = expandedDriveFiles()
+        let phaseMonths: [AusbildungsplanParser.Phase: Set<Int>]
+        if let plan = model.files(for: .ausbildungsplan).first, !driveFiles.isEmpty {
+            phaseMonths = AusbildungsplanParser.phaseMonths(inPDF: plan)
+        } else {
+            phaseMonths = [:]
+        }
+
+        guard !phaseMonths.isEmpty else {
+            buildBook(driveSubchapters: [])   // kein Plan/keine Phasen → flaches Kapitel
+            return
+        }
+
+        let assignment = AusbildungsplanParser.assign(drives: driveFiles, phaseMonths: phaseMonths)
+        if !assignment.conflicts.isEmpty {
+            conflictChoices = Dictionary(uniqueKeysWithValues:
+                assignment.conflicts.map { ($0.month, $0.phases[0]) })
+            driveConflict = DriveConflictPrompt(conflicts: assignment.conflicts,
+                                                phaseMonths: phaseMonths, driveFiles: driveFiles)
+            return
+        }
+        buildBook(driveSubchapters: assignment.byPhase)
+    }
+
+    /// Setzt den Bau nach dem Auflösen der Zuordnungskonflikte fort.
+    private func resolveDriveConflict(_ prompt: DriveConflictPrompt) {
+        driveConflict = nil
+        let assignment = AusbildungsplanParser.assign(drives: prompt.driveFiles,
+                                                      phaseMonths: prompt.phaseMonths,
+                                                      resolutions: conflictChoices)
+        buildBook(driveSubchapters: assignment.byPhase)
+    }
+
+    /// Löst die Ausbildungsfahrten (inkl. ZIPs) zu einzelnen PDFs auf – Grundlage
+    /// der Zuordnung zu Unterkapiteln. Die PDFs liegen in einem temporären
+    /// Verzeichnis, das bis zum Bau bestehen bleibt.
+    private func expandedDriveFiles() -> [URL] {
+        let urls = model.files(for: .ausbildungsfahrten)
+        guard !urls.isEmpty else { return [] }
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DriveBucketing", isDirectory: true)
+        try? FileManager.default.removeItem(at: dir)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return LogbookComposer.expandToPDFs(urls, into: dir)
+    }
+
+    /// Baut das vollständige Ausbildungsbuch (Deckblatt, Inhaltsverzeichnis,
+    /// Kapitel-/Unterkapitel-Deckblätter, Inhalte – alles A4) und fragt per
+    /// Speichern-Dialog nach dem Zielort. `driveSubchapters` (falls nicht leer)
+    /// ersetzt das flache Kapitel „Ausbildungsfahrten" durch Unterkapitel.
+    private func buildBook(driveSubchapters: [(phase: AusbildungsplanParser.Phase, files: [URL])]) {
+        guard let user else { return }
         // Eine Lotsenbrüderschaft ist optional. Ist keine gewählt, wird das
         // Ausbildungsbuch ohne Logo erstellt (ohne Platzhalter).
         let revier = Brotherhood.named(brotherhoodID)
+        let pageNumbers = includePageNumbers
 
         isBuilding = true
         resultMessage = nil
@@ -1067,14 +1153,23 @@ struct ComposerView: View {
             }
 
             // Kapitel in aktueller Feld-Reihenfolge übergeben; jedes trägt seinen
-            // Buchtitel und seine Sortierregel selbst. Leere Kapitel filtert der
-            // Composer heraus.
-            let chapters = model.chapterFields.map {
-                LogbookComposer.ChapterInput(title: $0.bookTitle, files: $0.urls, sort: $0.sortKind)
+            // Buchtitel und seine Sortierregel selbst. Das Kapitel
+            // „Ausbildungsfahrten" wird – wenn zugeordnet – durch Unterkapitel je
+            // Phase ersetzt. Leere Kapitel filtert der Composer heraus.
+            let chapters = model.chapterFields.map { field -> LogbookComposer.ChapterInput in
+                if field.standardChapter == .ausbildungsfahrten, !driveSubchapters.isEmpty {
+                    let subs = driveSubchapters.map {
+                        LogbookComposer.SubchapterInput(title: $0.phase.title, files: $0.files)
+                    }
+                    return LogbookComposer.ChapterInput(title: field.bookTitle, files: [],
+                                                        sort: field.sortKind, subchapters: subs)
+                }
+                return LogbookComposer.ChapterInput(title: field.bookTitle, files: field.urls, sort: field.sortKind)
             }
 
             guard let data = LogbookComposer.build(chapters: chapters, user: user,
-                                                   submissionDate: submissionDate, logo: logo) else {
+                                                   submissionDate: submissionDate, logo: logo,
+                                                   pageNumbers: pageNumbers) else {
                 resultIsError = true
                 resultMessage = "Das Ausbildungsbuch konnte nicht erstellt werden."
                 return
@@ -1098,6 +1193,56 @@ struct ComposerView: View {
                 resultMessage = "Speichern fehlgeschlagen: \(error.localizedDescription)"
             }
         }
+    }
+}
+
+/// Klärt die Zuordnung von Ausbildungsfahrten, deren Monat im Ausbildungsplan zu
+/// mehreren Phasen gehört. Je Konfliktmonat wählt der Anwender die Phase.
+struct DriveConflictSheet: View {
+    let conflicts: [AusbildungsplanParser.MonthConflict]
+    @Binding var choices: [Int: AusbildungsplanParser.Phase]
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Fahrten zuordnen")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            Text("Diese Monate gehören im Ausbildungsplan zu mehreren Phasen. "
+                 + "Bitte wähle je Monat die passende Phase für die Fahrten.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(conflicts) { conflict in
+                HStack {
+                    Text("\(AusbildungsplanParser.monthName(conflict.month)) "
+                         + "(\(conflict.driveCount) \(conflict.driveCount == 1 ? "Fahrt" : "Fahrten"))")
+                        .frame(width: 170, alignment: .leading)
+                    Picker("", selection: Binding(
+                        get: { choices[conflict.month] ?? conflict.phases[0] },
+                        set: { choices[conflict.month] = $0 })) {
+                        ForEach(conflict.phases) { phase in
+                            Text(phase.title).tag(phase)
+                        }
+                    }
+                    .labelsHidden()
+                }
+            }
+
+            HStack {
+                Button("Abbrechen", role: .cancel, action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Übernehmen", action: onConfirm)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
     }
 }
 
